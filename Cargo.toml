@@ -1,0 +1,43 @@
+[package]
+name = "fundere"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+clap = "3.0.14"
+tracing = "0.1.30"
+tracing-subscriber = "0.3.7"
+
+[dependencies.serenity]
+version = "0.10.10"
+features = [
+	"collector",
+	"voice",
+]
+
+[dependencies.songbird]
+version = "0.2.1"
+features = [
+	"gateway",
+	"serenity-rustls",
+]
+
+[dependencies.sqlx]
+version = "0.5.10"
+features = [
+	"runtime-tokio-rustls",
+	"postgres",
+	"macros",
+	"migrate",
+]
+
+[dependencies.tokio]
+version = "1.16.1"
+features = ["full"]
+
+[dependencies.tokio-console]
+version = "0.1.1"
+optional = true
+
+[features]
+dev-console = ["tokio-console"]

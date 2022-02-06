@@ -1,0 +1,18 @@
+# YAML 1.2
+---
+cff-version: "1.1.0"
+message: |
+  If you use this software, please cite it using these metadata.
+  The library has its own CITATION.cff file in lib/.
+
+title: Fundere
+version: "0.0.0"
+date-released: 2022-02-10
+
+repository-code: https://github.com/storily/fundere
+license: Apache-2.0
+
+authors:
+  - family-names: Saparelli
+    given-names: Félix
+...
