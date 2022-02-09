@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 clap = "3.0.14"
 tracing = "0.1.30"
-tracing-subscriber = "0.3.7"
 
 [dependencies.serenity]
 version = "0.10.10"
@@ -38,6 +37,13 @@ features = ["full"]
 [dependencies.tokio-console]
 version = "0.1.1"
 optional = true
+
+[dependencies.tracing-subscriber]
+version = "0.3.7"
+features = [
+	"env-filter",
+	"fmt",
+]
 
 [build-dependencies]
 embed-resource = "1.6.1"
