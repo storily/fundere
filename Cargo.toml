@@ -39,5 +39,8 @@ features = ["full"]
 version = "0.1.1"
 optional = true
 
+[build-dependencies]
+embed-resource = "1.6.1"
+
 [features]
 dev-console = ["tokio-console"]
