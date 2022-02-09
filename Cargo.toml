@@ -1,7 +1,17 @@
 [package]
 name = "fundere"
 version = "0.0.0"
+
+authors = ["Félix Saparelli <felix@passcod.name>"]
+license = "Apache-2.0"
+description = "Yet Another Implementation of Sass"
+publish = false
+
 edition = "2021"
+resolver = "2"
+rust-version = "1.58.0"
+
+exclude = ["/.github"]
 
 [dependencies]
 clap = "3.0.14"
