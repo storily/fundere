@@ -1,0 +1,32 @@
+allow-branch = ["main"]
+consolidate-pushes = true
+push-options = ["--follow-tags"]
+push-remote = "git@github.com:storily/fundere.git"
+
+pre-release-hook = ["bin/pre-release-pull"]
+pre-release-commit-message = "v{{version}}"
+tag-prefix = ""
+tag-message = "fundere {{version}}"
+
+publish = false
+
+[[pre-release-replacements]]
+file = "CITATION.cff"
+search = "^version: \"?[\\d.]+(-.+)?\"?"
+replace = "version: \"{{version}}\""
+prerelease = true
+max = 1
+
+[[pre-release-replacements]]
+file = "CITATION.cff"
+search = "^date-released: .+(-.+)?"
+replace = "date-released: {{date}}"
+prerelease = true
+max = 1
+
+[[pre-release-replacements]]
+file = "fundere.exe.manifest"
+search = "^		version=\"[\\d.]+[.]0\""
+replace = "		version=\"{{version}}.0\""
+prerelease = false
+max = 1
