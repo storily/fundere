@@ -19,6 +19,8 @@ impl Config {
 pub struct DiscordConfig {
 	#[knuffel(property)]
 	pub token: String,
+	#[knuffel(property)]
+	pub app_id: u64,
 	#[knuffel(child)]
 	pub intents: IntentsConfig,
 }
@@ -28,10 +30,7 @@ pub struct IntentsConfig(#[knuffel(children)] pub Vec<Intents>);
 
 impl Default for IntentsConfig {
 	fn default() -> Self {
-		Self(vec![
-			Intents::GuildMessages,
-			Intents::GuildVoiceStates,
-		])
+		Self(vec![Intents::GuildMessages, Intents::GuildVoiceStates])
 	}
 }
 

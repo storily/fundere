@@ -1,4 +1,4 @@
-discord token="<TOKEN HERE>" {
+discord token="<TOKEN HERE>" app-id=123 {
 	intents {
 		guild-members
 		guild-messages
