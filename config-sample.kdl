@@ -1,0 +1,8 @@
+discord token="<TOKEN HERE>" {
+	intents {
+		guild-members
+		guild-messages
+		guild-message-reactions
+		guild-voice-states
+	}
+}
