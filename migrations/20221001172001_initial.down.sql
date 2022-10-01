@@ -1,3 +1,4 @@
+DROP VIEW sprints_current;
 DROP TABLE sprint_participant;
 DROP TABLE sprints;
 

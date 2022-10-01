@@ -36,6 +36,7 @@ CREATE TABLE sprints (
 
 CREATE INDEX sprints_starting_at ON sprints (starting_at);
 CREATE INDEX sprints_cancelled ON sprints ((cancelled_at is null));
+CREATE INDEX sprints_current_idx ON sprints ((cancelled_at is not null), starting_at);
 
 CREATE TABLE sprint_participant (
 	sprint_id uuid not null references sprints (id) on delete cascade,
@@ -47,3 +48,13 @@ CREATE TABLE sprint_participant (
 
 	primary key (sprint_id, member)
 );
+
+CREATE VIEW sprints_current AS
+	SELECT sprints.*, array_agg(sprint_participant.*) AS participants
+	FROM sprints
+	LEFT JOIN sprint_participant ON sprints.id = sprint_participant.sprint_id
+	WHERE true
+		AND sprints.starting_at >= current_timestamp
+		AND sprints.starting_at + (interval '1 minute' * sprints.duration_minutes) >= current_timestamp
+		AND sprints.cancelled_at IS NOT NULL
+	GROUP BY sprints.id;
