@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use miette::{IntoDiagnostic, Result};
 use tokio::fs;
 use twilight_gateway::Intents as TwItents;
@@ -12,9 +14,10 @@ pub struct Config {
 }
 
 impl Config {
-	pub async fn load(path: &str) -> Result<Self> {
+	pub async fn load(path: impl AsRef<Path>) -> Result<Self> {
+		let path = path.as_ref();
 		let text = fs::read_to_string(path).await.into_diagnostic()?;
-		Ok(knuffel::parse(path, &text)?)
+		Ok(knuffel::parse(path.to_string_lossy().as_ref(), &text)?)
 	}
 }
 

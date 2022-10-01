@@ -14,7 +14,7 @@ rust-version = "1.60.0"
 exclude = ["/.github"]
 
 [dependencies]
-clap = { version = "3.2.22", features = ["derive", "cargo"] }
+clap = { version = "4.0.7", features = ["derive", "cargo"] }
 futures-util = "0.3.24"
 knuffel = "2.0.0"
 miette = { version = "4.7.1", features = ["fancy"] }

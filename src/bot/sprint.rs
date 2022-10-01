@@ -11,7 +11,7 @@ use twilight_util::builder::command::{
 	CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder,
 };
 
-use crate::{App};
+use super::App;
 
 pub fn command(_app: App) -> Result<Command> {
 	CommandBuilder::new(
