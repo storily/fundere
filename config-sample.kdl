@@ -6,3 +6,5 @@ discord token="<TOKEN HERE>" app-id=123 {
 		guild-voice-states
 	}
 }
+
+/-db url="postgres://user:password@host/database"

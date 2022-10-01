@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use miette::{IntoDiagnostic, Result};
 use tokio::fs;
 use twilight_gateway::Intents as TwItents;
@@ -8,12 +6,15 @@ use twilight_gateway::Intents as TwItents;
 pub struct Config {
 	#[knuffel(child)]
 	pub discord: DiscordConfig,
+
+	#[knuffel(child, default)]
+	pub db: DbConfig,
 }
 
 impl Config {
-	pub async fn load(path: &str) -> Result<Arc<Self>> {
+	pub async fn load(path: &str) -> Result<Self> {
 		let text = fs::read_to_string(path).await.into_diagnostic()?;
-		Ok(Arc::new(knuffel::parse(path, &text)?))
+		Ok(knuffel::parse(path, &text)?)
 	}
 }
 
@@ -96,4 +97,16 @@ impl From<Intents> for TwItents {
 			MessageContent => TwItents::MESSAGE_CONTENT,
 		}
 	}
+}
+
+#[derive(Debug, Clone, knuffel::Decode)]
+pub struct DbConfig {
+	#[knuffel(property, default = "postgres://localhost/fundere".to_string())]
+	pub url: String,
+}
+
+impl Default for DbConfig {
+    fn default() -> Self {
+        Self { url: "postgres://localhost/fundere".to_string() }
+    }
 }

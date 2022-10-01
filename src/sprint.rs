@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use miette::{IntoDiagnostic, Result};
 use tracing::{info, warn};
 use twilight_model::application::{
@@ -13,9 +11,9 @@ use twilight_util::builder::command::{
 	CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder,
 };
 
-use crate::config::Config;
+use crate::{App};
 
-pub fn command(_config: Arc<Config>) -> Result<Command> {
+pub fn command(_app: App) -> Result<Command> {
 	CommandBuilder::new(
 		"sprint",
 		"Experimental new-gen wordwar/sprint command",
@@ -41,7 +39,7 @@ pub fn command(_config: Arc<Config>) -> Result<Command> {
 }
 
 pub async fn handle(
-	config: Arc<Config>,
+	app: App,
 	interaction: &Interaction,
 	command_data: &CommandData,
 ) -> Result<()> {
@@ -54,7 +52,7 @@ pub async fn handle(
 	});
 
 	match subcmd {
-		Some(("start", opts)) => sprint_start(config.clone(), interaction, opts).await?,
+		Some(("start", opts)) => sprint_start(app.clone(), interaction, opts).await?,
 		Some((other, _)) => warn!("unhandled sprint subcommand: {other}"),
 		_ => todo!("handle bare sprint command?"),
 	}
@@ -63,7 +61,7 @@ pub async fn handle(
 }
 
 async fn sprint_start(
-	_config: Arc<Config>,
+	_app: App,
 	_interaction: &Interaction,
 	options: &[CommandDataOption],
 ) -> Result<()> {

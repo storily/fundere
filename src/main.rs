@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
 use futures_util::StreamExt;
 use miette::{IntoDiagnostic, Result};
+use sqlx::{postgres::PgPoolOptions};
 use tokio::task::spawn;
 use tracing::{debug, info, warn};
 use twilight_gateway::Shard;
@@ -12,19 +11,25 @@ use twilight_model::{
 	id::Id,
 };
 
-use config::Config;
+pub(crate) use context::App;
 
 pub(crate) mod config;
+mod context;
 mod sprint;
 
 #[tokio::main]
 async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
-	let config = Config::load("config.kdl").await?;
+	let config = config::Config::load("config.kdl").await?;
+	let pool = PgPoolOptions::new()
+		.max_connections(5)
+		.connect(&config.db.url)
+		.await.into_diagnostic()?;
+	let app = App::new(config, pool);
 
-	let listening = spawn(listen(config.clone()));
-	let controlling = spawn(control(config));
+	let listening = spawn(listen(app.clone()));
+	let controlling = spawn(control(app));
 
 	controlling.await.into_diagnostic()??;
 	listening.await.into_diagnostic()??;
@@ -32,13 +37,13 @@ async fn main() -> Result<()> {
 	Ok(())
 }
 
-async fn control(config: Arc<Config>) -> Result<()> {
-	let client = Client::new(config.discord.token.clone());
-	let application_id = Id::new(config.discord.app_id);
+async fn control(app: App) -> Result<()> {
+	let client = Client::new(app.config.discord.token.clone());
+	let application_id = Id::new(app.config.discord.app_id);
 
 	let interaction_client = client.interaction(application_id);
 	interaction_client
-		.set_global_commands(&[sprint::command(config.clone())?])
+		.set_global_commands(&[sprint::command(app.clone())?])
 		.exec()
 		.await
 		.into_diagnostic()?;
@@ -46,10 +51,10 @@ async fn control(config: Arc<Config>) -> Result<()> {
 	Ok(())
 }
 
-async fn listen(config: Arc<Config>) -> Result<()> {
+async fn listen(app: App) -> Result<()> {
 	let (shard, mut events) = Shard::new(
-		config.discord.token.clone(),
-		config.discord.intents.to_intent(),
+		app.config.discord.token.clone(),
+		app.config.discord.intents.to_intent(),
 	);
 
 	shard.start().await.into_diagnostic()?;
@@ -59,7 +64,7 @@ async fn listen(config: Arc<Config>) -> Result<()> {
 		debug!("Event: {event:?}");
 		// TODO: spawn off here
 		match event {
-			Event::InteractionCreate(ic) => handle_interaction(config.clone(), &ic.0).await?,
+			Event::InteractionCreate(ic) => handle_interaction(app.clone(), &ic.0).await?,
 			_ => {}
 		}
 	}
@@ -67,10 +72,10 @@ async fn listen(config: Arc<Config>) -> Result<()> {
 	Ok(())
 }
 
-async fn handle_interaction(config: Arc<Config>, interaction: &Interaction) -> Result<()> {
+async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 	match &interaction.data {
 		Some(InteractionData::ApplicationCommand(data)) => match data.name.as_str() {
-			"sprint" => sprint::handle(config.clone(), interaction, &data).await?,
+			"sprint" => sprint::handle(app.clone(), interaction, &data).await?,
 			cmd => warn!("unhandled command: {cmd}"),
 		},
 		Some(other) => warn!("unhandled interaction: {other:?}"),
