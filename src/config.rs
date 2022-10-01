@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use miette::{IntoDiagnostic, Result};
 use tokio::fs;
 use twilight_gateway::Intents as TwItents;
@@ -9,9 +11,9 @@ pub struct Config {
 }
 
 impl Config {
-	pub async fn load(path: &str) -> Result<Self> {
+	pub async fn load(path: &str) -> Result<Arc<Self>> {
 		let text = fs::read_to_string(path).await.into_diagnostic()?;
-		Ok(knuffel::parse(path, &text)?)
+		Ok(Arc::new(knuffel::parse(path, &text)?))
 	}
 }
 

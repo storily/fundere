@@ -1,29 +1,30 @@
 use std::sync::Arc;
 
-use config::DiscordConfig;
 use futures_util::StreamExt;
 use miette::{IntoDiagnostic, Result};
 use tokio::task::spawn;
-use tracing::info;
+use tracing::{debug, info, warn};
 use twilight_gateway::Shard;
 use twilight_http::Client;
-use twilight_model::application::command::CommandType;
-use twilight_model::id::Id;
-use twilight_util::builder::command::{
-	CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder,
+use twilight_model::{
+	application::interaction::{Interaction, InteractionData},
+	gateway::event::Event,
+	id::Id,
 };
 
-mod config;
+use config::Config;
+
+pub(crate) mod config;
+mod sprint;
 
 #[tokio::main]
 async fn main() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
-	let config = config::Config::load("config.kdl").await?;
+	let config = Config::load("config.kdl").await?;
 
-	let discord_config = Arc::new(config.discord);
-	let listening = spawn(listen(discord_config.clone()));
-	let controlling = spawn(control(discord_config));
+	let listening = spawn(listen(config.clone()));
+	let controlling = spawn(control(config));
 
 	controlling.await.into_diagnostic()??;
 	listening.await.into_diagnostic()??;
@@ -31,25 +32,13 @@ async fn main() -> Result<()> {
 	Ok(())
 }
 
-async fn control(config: Arc<DiscordConfig>) -> Result<()> {
-	let command = CommandBuilder::new(
-		"sprint",
-		"Experimental new-gen wordwar/sprint command",
-		CommandType::ChatInput,
-	)
-	.option(
-		SubCommandBuilder::new("start", "Create a new sprint").option(StringBuilder::new(
-			"when",
-			"When to start the sprint, either in clock time (08:30), or in relative time (+15m)",
-		).required(true)).option(IntegerBuilder::new("duration", "Duration of the sprint in minutes (defaults to 15)")),
-	).validate().into_diagnostic()?.build();
-
-	let client = Client::new(config.token.clone());
-	let application_id = Id::new(config.app_id);
+async fn control(config: Arc<Config>) -> Result<()> {
+	let client = Client::new(config.discord.token.clone());
+	let application_id = Id::new(config.discord.app_id);
 
 	let interaction_client = client.interaction(application_id);
 	interaction_client
-		.set_global_commands(&[command])
+		.set_global_commands(&[sprint::command(config.clone())?])
 		.exec()
 		.await
 		.into_diagnostic()?;
@@ -57,14 +46,35 @@ async fn control(config: Arc<DiscordConfig>) -> Result<()> {
 	Ok(())
 }
 
-async fn listen(config: Arc<DiscordConfig>) -> Result<()> {
-	let (shard, mut events) = Shard::new(config.token.clone(), config.intents.to_intent());
+async fn listen(config: Arc<Config>) -> Result<()> {
+	let (shard, mut events) = Shard::new(
+		config.discord.token.clone(),
+		config.discord.intents.to_intent(),
+	);
 
 	shard.start().await.into_diagnostic()?;
 	info!("Created shard");
 
 	while let Some(event) = events.next().await {
-		info!("Event: {event:?}");
+		debug!("Event: {event:?}");
+		// TODO: spawn off here
+		match event {
+			Event::InteractionCreate(ic) => handle_interaction(config.clone(), &ic.0).await?,
+			_ => {}
+		}
+	}
+
+	Ok(())
+}
+
+async fn handle_interaction(config: Arc<Config>, interaction: &Interaction) -> Result<()> {
+	match &interaction.data {
+		Some(InteractionData::ApplicationCommand(data)) => match data.name.as_str() {
+			"sprint" => sprint::handle(config.clone(), interaction, &data).await?,
+			cmd => warn!("unhandled command: {cmd}"),
+		},
+		Some(other) => warn!("unhandled interaction: {other:?}"),
+		None => warn!("unspecified data for interaction"),
 	}
 
 	Ok(())
