@@ -22,10 +22,12 @@ CREATE DOMAIN member AS member_t CHECK (
 CREATE TABLE sprints (
 	id uuid primary key default gen_random_uuid(),
 	shortid serial,
+
 	created_at timestamp with time zone not null default current_timestamp,
 	updated_at timestamp with time zone not null default current_timestamp,
-	cancelled_at timestamp with time zone null,
+
 	starting_at timestamp with time zone not null,
+	cancelled_at timestamp with time zone null,
 	duration_minutes int not null default 15,
 	channels channel[] not null default '{}',
 
@@ -33,10 +35,13 @@ CREATE TABLE sprints (
 );
 
 CREATE INDEX sprints_starting_at ON sprints (starting_at);
+CREATE INDEX sprints_cancelled ON sprints ((cancelled_at is null));
 
 CREATE TABLE sprint_participant (
 	sprint_id uuid not null references sprints (id) on delete cascade,
 	member member not null,
+	joined_at timestamp with time zone not null default current_timestamp,
+
 	words_start int null,
 	words_end int null,
 
