@@ -97,7 +97,7 @@ impl SprintAnnounce {
 		let starting_at = sprint
 			.starting_at
 			.with_timezone(&chrono_tz::Pacific::Auckland)
-			.format("%H:%M");
+			.format("%H:%M:%S");
 		let starting_in = format_duration(
 			sprint
 				.starting_in()
