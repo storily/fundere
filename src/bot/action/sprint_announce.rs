@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{iter::once, str::FromStr, time::Duration};
 
 use chrono::{DateTime, Utc};
 use humantime::format_duration;
@@ -7,7 +7,10 @@ use sqlx::{postgres::types::PgInterval, types::Uuid, PgPool};
 use strum::{Display, EnumString};
 use twilight_http::client::InteractionClient;
 use twilight_model::{
-	application::interaction::Interaction,
+	application::{
+		component::{button::ButtonStyle, ActionRow, Button, Component},
+		interaction::Interaction,
+	},
 	http::interaction::{InteractionResponse, InteractionResponseType},
 	id::{marker::InteractionMarker, Id},
 };
@@ -21,6 +24,7 @@ use super::Action;
 pub struct SprintAnnounce {
 	pub id: Id<InteractionMarker>,
 	pub token: String,
+	pub sprint: Uuid,
 	pub content: String,
 }
 
@@ -90,13 +94,20 @@ impl SprintAnnounce {
 			return Err(miette!("Bug: went to announce sprint but it was already"));
 		}
 
-		let starting = format_duration(
+		let starting_at = sprint
+			.starting_at
+			.with_timezone(&chrono_tz::Pacific::Auckland)
+			.format("%H:%M");
+		let starting_in = format_duration(
 			sprint
 				.starting_in()
 				.ok_or(miette!("Bug: sprint start is in the past"))?,
 		);
+
 		let duration = format_duration(sprint.duration());
-		let content = format!("⏱️ New sprint! Starting in {starting}, going for {duration}.");
+		let content = format!(
+			"⏱️ New sprint! Starting in {starting_in} (at {starting_at}), going for {duration}."
+		);
 
 		sprint
 			.update_status(&app.db, SprintStatus::Announced)
@@ -105,11 +116,13 @@ impl SprintAnnounce {
 		Ok(Action::SprintAnnounce(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
+			sprint: sprint.id,
 			content,
 		}))
 	}
 
 	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
+		let sprint_id = self.sprint;
 		interaction_client
 			.create_response(
 				self.id,
@@ -119,6 +132,24 @@ impl SprintAnnounce {
 					data: Some(
 						InteractionResponseDataBuilder::new()
 							.content(self.content)
+							.components(action_row(vec![
+								Component::Button(Button {
+									custom_id: Some(format!("sprint:announce:join:{sprint_id}")),
+									disabled: false,
+									emoji: None,
+									label: Some("Join".to_string()),
+									style: ButtonStyle::Primary,
+									url: None,
+								}),
+								Component::Button(Button {
+									custom_id: Some(format!("sprint:announce:cancel:{sprint_id}")),
+									disabled: false,
+									emoji: None,
+									label: Some("Cancel".to_string()),
+									style: ButtonStyle::Danger,
+									url: None,
+								}),
+							]))
 							.build(),
 					),
 				},
@@ -128,4 +159,8 @@ impl SprintAnnounce {
 			.into_diagnostic()?;
 		Ok(())
 	}
+}
+
+fn action_row(components: Vec<Component>) -> impl Iterator<Item = Component> {
+	once(Component::ActionRow(ActionRow { components }))
 }
