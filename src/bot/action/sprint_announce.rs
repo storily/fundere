@@ -1,6 +1,7 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
+use humantime::format_duration;
 use miette::{miette, IntoDiagnostic, Result};
 use sqlx::{postgres::types::PgInterval, types::Uuid, PgPool};
 use strum::{Display, EnumString};
@@ -58,14 +59,19 @@ impl Sprint {
 	}
 
 	pub fn duration(&self) -> Duration {
-		Duration::microseconds(self.duration.microseconds)
-			+ Duration::days((self.duration.days + self.duration.months * 31).into())
+		Duration::from_secs(
+			(self.duration.days as u64 + self.duration.months as u64 * 31)
+				* 24 * 60 * 60 * 1_000_000
+				+ (self.duration.microseconds as u64) / (1_000_000),
+		)
 	}
 
 	pub fn starting_in(&self) -> Option<Duration> {
 		let now = Utc::now();
 		if self.starting_at > now {
-			Some(self.starting_at - now)
+			Some(Duration::from_secs(
+				(self.starting_at - now).num_seconds() as _
+			))
 		} else {
 			None
 		}
@@ -84,9 +90,13 @@ impl SprintAnnounce {
 			return Err(miette!("Bug: went to announce sprint but it was already"));
 		}
 
-		let starting = sprint.starting_in().ok_or(miette!("Bug: sprint start is in the past"))?.num_minutes();
-		let minutes = sprint.duration().num_minutes();
-		let content = format!("⏱️ New sprint! Starting in {starting} minutes, going for {minutes} minutes.");
+		let starting = format_duration(
+			sprint
+				.starting_in()
+				.ok_or(miette!("Bug: sprint start is in the past"))?,
+		);
+		let duration = format_duration(sprint.duration());
+		let content = format!("⏱️ New sprint! Starting in {starting}, going for {duration}.");
 
 		sprint
 			.update_status(&app.db, SprintStatus::Announced)
