@@ -25,10 +25,10 @@ CREATE TABLE sprints (
 
 	created_at timestamp with time zone not null default current_timestamp,
 	updated_at timestamp with time zone not null default current_timestamp,
+	cancelled_at timestamp with time zone null,
 
 	starting_at timestamp with time zone not null,
-	cancelled_at timestamp with time zone null,
-	duration_minutes int not null default 15,
+	duration interval not null,
 	channels channel[] not null default '{}',
 
 	unique (shortid)
@@ -55,6 +55,6 @@ CREATE VIEW sprints_current AS
 	LEFT JOIN sprint_participant ON sprints.id = sprint_participant.sprint_id
 	WHERE true
 		AND sprints.starting_at >= current_timestamp
-		AND sprints.starting_at + (interval '1 minute' * sprints.duration_minutes) >= current_timestamp
+		AND sprints.starting_at + sprints.duration >= current_timestamp
 		AND sprints.cancelled_at IS NOT NULL
 	GROUP BY sprints.id;

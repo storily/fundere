@@ -5,7 +5,7 @@ use tokio::{
 	sync::mpsc::{self, Receiver},
 	task::spawn,
 };
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 use twilight_gateway::Shard;
 use twilight_http::Client;
 use twilight_model::{
@@ -60,7 +60,8 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 		use action::Action::*;
 		let action_dbg = format!("action: {action:?}");
 		match action {
-			CommandError(data) => action::CommandError::handle(&interaction_client, data).await,
+			CommandError(data) => data.handle(&interaction_client).await,
+			SprintAnnounce(data) => data.handle(&interaction_client).await,
 		}
 		.wrap_err(action_dbg)?;
 	}
@@ -83,12 +84,12 @@ async fn listener(app: App) -> Result<()> {
 		let app = app.clone();
 		spawn(async move {
 			match event {
-				Event::InteractionCreate(ic) =>
-					handle_interaction(app.clone(), &ic.0)
+				Event::InteractionCreate(ic) => handle_interaction(app.clone(), &ic.0)
 					.await
 					.wrap_err("event: interaction-create"),
-				_ => Ok(())
-			}.unwrap_or_else(|err| error!("{err:?}"))
+				_ => Ok(()),
+			}
+			.unwrap_or_else(|err| error!("{err:?}"))
 		});
 	}
 
@@ -107,7 +108,7 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					Ok(())
 				}
 			} {
-				app.send_action(CommandError::from_report(interaction, err)?)
+				app.send_action(CommandError::new(interaction, err)?)
 					.await?;
 			}
 		}

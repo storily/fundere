@@ -1,8 +1,9 @@
 use std::str::FromStr;
 
-use chrono::{naive::NaiveTime, DateTime, Duration, Utc};
+use chrono::{naive::NaiveTime, Duration, Utc};
 use miette::{miette, Context, IntoDiagnostic, Result};
-use tracing::{info, warn};
+use sqlx::{types::Uuid, Row};
+use tracing::{debug, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
 	interaction::{
@@ -13,6 +14,8 @@ use twilight_model::application::{
 use twilight_util::builder::command::{
 	CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder,
 };
+
+use crate::bot::action::SprintAnnounce;
 
 use super::App;
 
@@ -62,8 +65,8 @@ pub async fn handle(app: App, interaction: &Interaction, command_data: &CommandD
 }
 
 async fn sprint_start(
-	_app: App,
-	_interaction: &Interaction,
+	app: App,
+	interaction: &Interaction,
 	options: &[CommandDataOption],
 ) -> Result<()> {
 	let duration = get_integer(options, "duration").unwrap_or(15);
@@ -87,7 +90,19 @@ async fn sprint_start(
 		now_with_time
 	};
 
-	info!(%starting, %duration, "start sprint options");
+	debug!(%starting, %duration, "recording sprint");
+	let id: Uuid =
+		sqlx::query("INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING id")
+			.bind(starting)
+			.bind(duration)
+			.fetch_one(&app.db)
+			.await
+			.into_diagnostic()?
+			.try_get("id")
+			.into_diagnostic()?;
+
+	app.send_action(SprintAnnounce::new(&interaction, id))
+		.await?;
 
 	Ok(())
 }
