@@ -5,7 +5,7 @@ use tokio::{
 	sync::mpsc::{self, Receiver},
 	task::spawn,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, info, warn, error};
 use twilight_gateway::Shard;
 use twilight_http::Client;
 use twilight_model::{
@@ -78,14 +78,18 @@ async fn listener(app: App) -> Result<()> {
 	info!("Created shard");
 
 	while let Some(event) = events.next().await {
-		debug!("Event: {event:?}");
-		// TODO: spawn off here
-		match event {
-			Event::InteractionCreate(ic) => handle_interaction(app.clone(), &ic.0)
-				.await
-				.wrap_err("event: interaction-create")?,
-			_ => {}
-		}
+		debug!(?event, "spawning off to handle event");
+
+		let app = app.clone();
+		spawn(async move {
+			match event {
+				Event::InteractionCreate(ic) =>
+					handle_interaction(app.clone(), &ic.0)
+					.await
+					.wrap_err("event: interaction-create"),
+				_ => Ok(())
+			}.unwrap_or_else(|err| error!("{err:?}"))
+		});
 	}
 
 	Ok(())
