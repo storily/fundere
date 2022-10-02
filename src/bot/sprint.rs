@@ -97,12 +97,18 @@ async fn sprint_start(
 			.bind(duration)
 			.fetch_one(&app.db)
 			.await
-			.into_diagnostic()?
+			.into_diagnostic()
+			.wrap_err("storing to db")?
 			.try_get("id")
-			.into_diagnostic()?;
+			.into_diagnostic()
+			.wrap_err("getting stored id")?;
 
-	app.send_action(SprintAnnounce::new(&interaction, id))
-		.await?;
+	app.send_action(
+		SprintAnnounce::new(app.clone(), &interaction, id)
+			.await
+			.wrap_err("rendering announce")?,
+	)
+	.await?;
 
 	Ok(())
 }
