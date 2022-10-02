@@ -17,6 +17,8 @@ use twilight_model::{
 use crate::config::Config;
 pub(crate) use context::App;
 
+use self::action::CommandError;
+
 mod action;
 mod context;
 mod sprint;
@@ -58,7 +60,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 		use action::Action::*;
 		let action_dbg = format!("action: {action:?}");
 		match action {
-			CommandError(data) => action::handle_command_error(&interaction_client, data).await,
+			CommandError(data) => action::CommandError::handle(&interaction_client, data).await,
 		}
 		.wrap_err(action_dbg)?;
 	}
@@ -91,12 +93,20 @@ async fn listener(app: App) -> Result<()> {
 
 async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 	match &interaction.data {
-		Some(InteractionData::ApplicationCommand(data)) => match data.name.as_str() {
-			"sprint" => sprint::handle(app.clone(), interaction, &data)
-				.await
-				.wrap_err("command: sprint")?,
-			cmd => warn!("unhandled command: {cmd}"),
-		},
+		Some(InteractionData::ApplicationCommand(data)) => {
+			if let Err(err) = match data.name.as_str() {
+				"sprint" => sprint::handle(app.clone(), interaction, &data)
+					.await
+					.wrap_err("command: sprint"),
+				cmd => {
+					warn!("unhandled command: {cmd}");
+					Ok(())
+				}
+			} {
+				app.send_action(CommandError::from_report(interaction, err)?)
+					.await?;
+			}
+		}
 		Some(other) => warn!("unhandled interaction: {other:?}"),
 		None => warn!("unspecified data for interaction"),
 	}
