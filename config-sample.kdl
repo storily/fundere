@@ -1,4 +1,6 @@
 discord token="<TOKEN HERE>" app-id=123 {
+	// Which Discord stream intents to request. These determine which events are
+	// received over the websocket connection.
 	intents {
 		guild-members
 		guild-messages
@@ -7,4 +9,11 @@ discord token="<TOKEN HERE>" app-id=123 {
 	}
 }
 
-/-db url="postgres://user:password@host/database"
+/-db url="postgres://user:password@host/database" {}
+
+// reference for internal settings, values are defaults
+/-internal {
+	// The size of the buffer used to send action messages to the Discord client
+	// controller. 64 is a reasonable value for general use.
+	control-buffer 64
+}

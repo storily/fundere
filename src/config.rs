@@ -11,6 +11,9 @@ pub struct Config {
 
 	#[knuffel(child, default)]
 	pub db: DbConfig,
+
+	#[knuffel(child, default)]
+	pub internal: InternalConfig,
 }
 
 impl Config {
@@ -109,7 +112,21 @@ pub struct DbConfig {
 }
 
 impl Default for DbConfig {
-    fn default() -> Self {
-        Self { url: "postgres://localhost/fundere".to_string() }
-    }
+	fn default() -> Self {
+		Self {
+			url: "postgres://localhost/fundere".to_string(),
+		}
+	}
+}
+
+#[derive(Debug, Clone, knuffel::Decode)]
+pub struct InternalConfig {
+	#[knuffel(child, unwrap(argument), default = Self::default().control_buffer)]
+	pub control_buffer: usize,
+}
+
+impl Default for InternalConfig {
+	fn default() -> Self {
+		Self { control_buffer: 64 }
+	}
 }

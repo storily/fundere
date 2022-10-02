@@ -1,4 +1,6 @@
-use miette::{IntoDiagnostic, Result};
+use std::iter::repeat;
+
+use miette::{Context, GraphicalReportHandler, GraphicalTheme, IntoDiagnostic, Result};
 use tracing::{info, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
@@ -11,7 +13,10 @@ use twilight_util::builder::command::{
 	CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder,
 };
 
-use super::App;
+use super::{
+	action::{Action, CommandError},
+	App,
+};
 
 pub fn command(_app: App) -> Result<Command> {
 	CommandBuilder::new(
@@ -38,11 +43,7 @@ pub fn command(_app: App) -> Result<Command> {
 	.map(|cmd| cmd.build())
 }
 
-pub async fn handle(
-	app: App,
-	interaction: &Interaction,
-	command_data: &CommandData,
-) -> Result<()> {
+pub async fn handle(app: App, interaction: &Interaction, command_data: &CommandData) -> Result<()> {
 	let subcmd = command_data.options.iter().find_map(|opt| {
 		if let CommandOptionValue::SubCommand(ref sub) = opt.value {
 			Some((opt.name.as_str(), sub.as_slice()))
@@ -51,10 +52,28 @@ pub async fn handle(
 		}
 	});
 
-	match subcmd {
-		Some(("start", opts)) => sprint_start(app.clone(), interaction, opts).await?,
-		Some((other, _)) => warn!("unhandled sprint subcommand: {other}"),
+	if let Err(err) = match subcmd {
+		Some(("start", opts)) => sprint_start(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: start"),
+		Some((other, _)) => {
+			warn!("unhandled sprint subcommand: {other}");
+			Ok(())
+		}
 		_ => todo!("handle bare sprint command?"),
+	} {
+		let handler = GraphicalReportHandler::new_themed(GraphicalTheme::unicode_nocolor());
+		let mut error = String::from("Error:\n```");
+		handler
+			.render_report(&mut error, err.as_ref())
+			.into_diagnostic()?;
+		error.extend(repeat('`').take(3));
+		app.send_action(Action::CommandError(CommandError {
+			id: interaction.id,
+			token: interaction.token.clone(),
+			error,
+		}))
+		.await?;
 	}
 
 	Ok(())
