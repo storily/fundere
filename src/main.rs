@@ -5,6 +5,7 @@ use miette::{IntoDiagnostic, Result};
 
 pub(crate) mod bot;
 pub(crate) mod config;
+pub(crate) mod db;
 
 #[tokio::main]
 async fn main() -> Result<()> {
