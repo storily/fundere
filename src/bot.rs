@@ -20,6 +20,7 @@ pub(crate) use context::App;
 use self::action::CommandError;
 
 mod action;
+mod calc;
 mod context;
 mod utils;
 mod sprint;
@@ -45,22 +46,30 @@ pub async fn start(config: Config) -> Result<()> {
 	Ok(())
 }
 
+#[tracing::instrument(skip_all)]
 async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<()> {
 	let client = Client::new(app.config.discord.token.clone());
 	let application_id = Id::new(app.config.discord.app_id);
 
 	let interaction_client = client.interaction(application_id);
+
+	info!("register commands: calc, sprint");
 	interaction_client
-		.set_global_commands(&[sprint::command(app.clone())?])
+		.set_global_commands(&[
+			calc::command()?,
+			sprint::command()?,
+		])
 		.exec()
 		.await
 		.into_diagnostic()?;
 
+	info!("wait for actions");
 	while let Some(action) = actions.recv().await {
 		debug!(?action, "action received at controller");
 		use action::Action::*;
 		let action_dbg = format!("action: {action:?}");
 		match action {
+			CalcResult(data) => data.handle(&interaction_client).await,
 			CommandError(data) => data.handle(&interaction_client).await,
 			SprintAnnounce(data) => data.handle(&interaction_client).await,
 			SprintJoined(data) => data.handle(&interaction_client).await,
@@ -71,6 +80,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 	Ok(())
 }
 
+#[tracing::instrument(skip_all)]
 async fn listener(app: App) -> Result<()> {
 	let (shard, mut events) = Shard::new(
 		app.config.discord.token.clone(),
@@ -78,7 +88,7 @@ async fn listener(app: App) -> Result<()> {
 	);
 
 	shard.start().await.into_diagnostic()?;
-	info!("Created shard");
+	info!("created shard");
 
 	while let Some(event) = events.next().await {
 		debug!(?event, "spawning off to handle event");
@@ -98,14 +108,17 @@ async fn listener(app: App) -> Result<()> {
 	Ok(())
 }
 
+#[tracing::instrument(skip_all)]
 async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 	match &interaction.data {
 		Some(InteractionData::ApplicationCommand(data)) => {
 			handle_interaction_error(&app, interaction, async {
+				debug!(command=?data.name, "handle slash command");
 				match data.name.as_str() {
 					"sprint" => sprint::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: sprint"),
+					"calc" => calc::on_command(app.clone(), interaction, &data).await.wrap_err("command: calc"),
 					cmd => {
 						warn!("unhandled command: {cmd}");
 						Ok(())
@@ -117,6 +130,7 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 		Some(InteractionData::MessageComponent(data)) => {
 			handle_interaction_error(&app, interaction, async {
 				let subids: Vec<&str> = data.custom_id.split(':').collect();
+				debug!(?subids, "handle component message");
 				match subids.first() {
 					Some(&"sprint") => {
 						sprint::on_component(app.clone(), interaction, &subids[1..], &data)

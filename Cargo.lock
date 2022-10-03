@@ -483,6 +483,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fend-core"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fa9a45871b53c510399302975c85b630ac7208bc49e5d7c23fc033feda84422"
+
+[[package]]
 name = "flate2"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -525,6 +531,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "clap",
+ "fend-core",
  "futures-util",
  "humantime",
  "knuffel",

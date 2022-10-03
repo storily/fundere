@@ -29,7 +29,8 @@ use crate::{
 
 use super::App;
 
-pub fn command(_app: App) -> Result<Command> {
+#[tracing::instrument]
+pub fn command() -> Result<Command> {
 	CommandBuilder::new(
 		"sprint",
 		"Experimental new-gen wordwar/sprint command",

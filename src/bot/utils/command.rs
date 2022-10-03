@@ -34,3 +34,13 @@ pub fn get_integer<'o>(options: &'o [CommandDataOption], name: &str) -> Option<i
 		}
 	})
 }
+
+pub fn get_boolean<'o>(options: &'o [CommandDataOption], name: &str) -> Option<bool> {
+	get_option(options, name).and_then(|val| {
+		if let CommandOptionValue::Boolean(b) = val {
+			Some(*b)
+		} else {
+			None
+		}
+	})
+}
