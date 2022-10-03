@@ -100,34 +100,52 @@ async fn listener(app: App) -> Result<()> {
 async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 	match &interaction.data {
 		Some(InteractionData::ApplicationCommand(data)) => {
-			if let Err(err) = match data.name.as_str() {
-				"sprint" => sprint::on_command(app.clone(), interaction, &data)
-					.await
-					.wrap_err("command: sprint"),
-				cmd => {
-					warn!("unhandled command: {cmd}");
-					Ok(())
+			handle_interaction_error(&app, interaction, async {
+				match data.name.as_str() {
+					"sprint" => sprint::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: sprint"),
+					cmd => {
+						warn!("unhandled command: {cmd}");
+						Ok(())
+					}
 				}
-			} {
-				app.send_action(CommandError::new(interaction, err)?)
-					.await?;
-			}
+			})
+			.await?;
 		}
 		Some(InteractionData::MessageComponent(data)) => {
-			let subids: Vec<&str> = data.custom_id.split(':').collect();
-			match subids.first() {
-				Some(&"sprint") => {
-					sprint::on_component(app.clone(), interaction, &subids[1..], &data)
-						.await
-						.wrap_err("component: sprint")?;
+			handle_interaction_error(&app, interaction, async {
+				let subids: Vec<&str> = data.custom_id.split(':').collect();
+				match subids.first() {
+					Some(&"sprint") => {
+						sprint::on_component(app.clone(), interaction, &subids[1..], &data)
+							.await
+							.wrap_err("component: sprint")
+					}
+					Some(other) => {
+						warn!("unhandled component action: {other:?}");
+						Ok(())
+					}
+					None => Ok(()),
 				}
-				Some(other) => warn!("unhandled component action: {other:?}"),
-				None => {}
-			}
+			})
+			.await?;
 		}
 		Some(other) => warn!("unhandled interaction: {other:?}"),
 		None => warn!("unspecified data for interaction"),
 	}
 
 	Ok(())
+}
+
+async fn handle_interaction_error(
+	app: &App,
+	interaction: &Interaction,
+	task: impl std::future::Future<Output = Result<()>>,
+) -> Result<()> {
+	if let Err(err) = task.await {
+		app.send_action(CommandError::new(interaction, err)?).await
+	} else {
+		Ok(())
+	}
 }
