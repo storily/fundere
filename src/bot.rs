@@ -22,8 +22,8 @@ use self::action::CommandError;
 mod action;
 mod calc;
 mod context;
-mod utils;
 mod sprint;
+mod utils;
 
 pub async fn start(config: Config) -> Result<()> {
 	let pool = PgPoolOptions::new()
@@ -55,10 +55,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 
 	info!("register commands: calc, sprint");
 	interaction_client
-		.set_global_commands(&[
-			calc::command()?,
-			sprint::command()?,
-		])
+		.set_global_commands(&[calc::command()?, sprint::command()?])
 		.exec()
 		.await
 		.into_diagnostic()?;
@@ -72,6 +69,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 			CalcResult(data) => data.handle(&interaction_client).await,
 			CommandError(data) => data.handle(&interaction_client).await,
 			SprintAnnounce(data) => data.handle(&interaction_client).await,
+			SprintCancelled(data) => data.handle(&interaction_client).await,
 			SprintJoined(data) => data.handle(&interaction_client).await,
 		}
 		.wrap_err(action_dbg)?;
@@ -118,7 +116,9 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					"sprint" => sprint::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: sprint"),
-					"calc" => calc::on_command(app.clone(), interaction, &data).await.wrap_err("command: calc"),
+					"calc" => calc::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: calc"),
 					cmd => {
 						warn!("unhandled command: {cmd}");
 						Ok(())

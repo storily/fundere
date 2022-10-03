@@ -2,7 +2,7 @@ use std::{str::FromStr, time::Duration};
 
 use chrono::{DateTime, TimeZone, Utc};
 use miette::{Context, IntoDiagnostic, Result};
-use sqlx::{postgres::types::PgInterval, types::Uuid, PgPool, Row};
+use sqlx::{postgres::types::PgInterval, types::Uuid, Row};
 use strum::{Display, EnumString};
 use twilight_model::id::{
 	marker::{GuildMarker, UserMarker},
@@ -60,13 +60,27 @@ impl Sprint {
 			.into_diagnostic()
 	}
 
-	pub async fn update_status(&self, pool: &PgPool, status: SprintStatus) -> Result<()> {
+	pub async fn update_status(&self, app: App, status: SprintStatus) -> Result<()> {
 		sqlx::query("UPDATE sprints SET status = $2 WHERE id = $1")
 			.bind(self.id)
 			.bind(status.to_string())
-			.execute(pool)
+			.execute(&app.db)
 			.await
 			.into_diagnostic()
+			.wrap_err("db: update sprint status")
+			.map(drop)
+	}
+
+	pub async fn cancel(
+		&self,
+		app: App,
+	) -> Result<()> {
+		sqlx::query("UPDATE sprints SET cancelled_at = CURRENT_TIMESTAMP WHERE id = $1")
+			.bind(self.id)
+			.execute(&app.db)
+			.await
+			.into_diagnostic()
+			.wrap_err("db: cancel sprint")
 			.map(drop)
 	}
 
@@ -87,7 +101,7 @@ impl Sprint {
 			.execute(&app.db)
 			.await
 			.into_diagnostic()
-			.wrap_err("join sprint")
+			.wrap_err("db: join sprint")
 			.map(drop)
 	}
 

@@ -23,6 +23,7 @@ pub struct SprintJoined {
 }
 
 impl SprintJoined {
+	#[tracing::instrument(skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: Sprint) -> Action {
 		Action::SprintJoined(Self {
 			id: interaction.id,

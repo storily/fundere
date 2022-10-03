@@ -19,6 +19,7 @@ pub struct CalcResult {
 	pub public: bool,
 }
 impl CalcResult {
+	#[tracing::instrument(skip(interaction))]
 	pub fn new(interaction: &Interaction, input: &str, result: &str, public: bool) -> Action {
 		Action::CalcResult(Self {
 			id: interaction.id,

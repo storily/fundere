@@ -18,7 +18,7 @@ use twilight_util::builder::command::{
 
 use crate::{
 	bot::{
-		action::{SprintAnnounce, SprintJoined},
+		action::{SprintAnnounce, SprintJoined, SprintCancelled},
 		utils::{
 			command::{get_integer, get_string},
 			time::parse_when_relative_to,
@@ -174,6 +174,21 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 	let sprint = Sprint::from_current(app.clone(), uuid)
 		.await
 		.wrap_err("that sprint isn't current")?;
+
+	let user = interaction
+		.member
+		.as_ref()
+		.and_then(|m| m.user.as_ref())
+		.ok_or(miette!("can only cancel sprint from a guild"))?;
+
+	if sprint.status()? >= SprintStatus::Ended {
+		return Err(miette!("sprint has already ended"));
+	}
+
+	sprint.cancel(app.clone()).await?;
+
+	app.send_action(SprintCancelled::new(&interaction, user))
+		.await?;
 
 	Ok(())
 }

@@ -28,6 +28,7 @@ pub struct SprintAnnounce {
 }
 
 impl SprintAnnounce {
+	#[tracing::instrument(skip(app, interaction))]
 	pub async fn new(app: App, interaction: &Interaction, sprint: Sprint) -> Result<Action> {
 		if sprint.status()? >= SprintStatus::Announced {
 			return Err(miette!("Bug: went to announce sprint but it was already"));
@@ -49,7 +50,7 @@ impl SprintAnnounce {
 		);
 
 		sprint
-			.update_status(&app.db, SprintStatus::Announced)
+			.update_status(app.clone(), SprintStatus::Announced)
 			.await?;
 
 		Ok(Action::SprintAnnounce(Self {
