@@ -1,5 +1,4 @@
-use humantime::format_duration;
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result};
 use sqlx::types::Uuid;
 use twilight_http::client::InteractionClient;
 use twilight_model::{
@@ -8,56 +7,28 @@ use twilight_model::{
 		interaction::Interaction,
 	},
 	http::interaction::{InteractionResponse, InteractionResponseType},
-	id::{marker::InteractionMarker, Id},
+	id::{marker::InteractionMarker, Id}, channel::message::MessageFlags,
 };
 use twilight_util::builder::InteractionResponseDataBuilder;
 
-use crate::{
-	bot::{App, utils::action_row},
-	db::sprint::{Sprint, SprintStatus},
-};
+use crate::{bot::utils::action_row, db::sprint::Sprint};
 
 use super::Action;
 
 #[derive(Debug, Clone)]
-pub struct SprintAnnounce {
+pub struct SprintJoined {
 	pub id: Id<InteractionMarker>,
 	pub token: String,
 	pub sprint: Uuid,
-	pub content: String,
 }
 
-impl SprintAnnounce {
-	pub async fn new(app: App, interaction: &Interaction, sprint: Sprint) -> Result<Action> {
-		if sprint.status()? >= SprintStatus::Announced {
-			return Err(miette!("Bug: went to announce sprint but it was already"));
-		}
-
-		let starting_at = sprint
-			.starting_at
-			.with_timezone(&chrono_tz::Pacific::Auckland)
-			.format("%H:%M:%S");
-		let starting_in = format_duration(
-			sprint
-				.starting_in()
-				.ok_or(miette!("Bug: sprint start is in the past"))?,
-		);
-
-		let duration = format_duration(sprint.duration());
-		let content = format!(
-			"⏱️ New sprint! Starting in {starting_in} (at {starting_at}), going for {duration}."
-		);
-
-		sprint
-			.update_status(&app.db, SprintStatus::Announced)
-			.await?;
-
-		Ok(Action::SprintAnnounce(Self {
+impl SprintJoined {
+	pub fn new(interaction: &Interaction, sprint: Sprint) -> Action {
+		Action::SprintJoined(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint: sprint.id,
-			content,
-		}))
+		})
 	}
 
 	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
@@ -70,21 +41,24 @@ impl SprintAnnounce {
 					kind: InteractionResponseType::ChannelMessageWithSource,
 					data: Some(
 						InteractionResponseDataBuilder::new()
-							.content(self.content)
+							.content("You've joined the sprint!")
+							.flags(MessageFlags::EPHEMERAL)
 							.components(action_row(vec![
 								Component::Button(Button {
-									custom_id: Some(format!("sprint:announce:join:{sprint_id}")),
+									custom_id: Some(format!(
+										"sprint:joined:start-words:{sprint_id}"
+									)),
 									disabled: false,
 									emoji: None,
-									label: Some("Join".to_string()),
+									label: Some("Starting words".to_string()),
 									style: ButtonStyle::Primary,
 									url: None,
 								}),
 								Component::Button(Button {
-									custom_id: Some(format!("sprint:announce:cancel:{sprint_id}")),
+									custom_id: Some(format!("sprint:joined:leave:{sprint_id}")),
 									disabled: false,
 									emoji: None,
-									label: Some("Cancel".to_string()),
+									label: Some("Leave".to_string()),
 									style: ButtonStyle::Danger,
 									url: None,
 								}),

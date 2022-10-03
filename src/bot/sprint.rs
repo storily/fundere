@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use chrono::{Duration, Utc};
 use miette::{miette, Context, IntoDiagnostic, Result};
-use sqlx::{types::Uuid, Row};
+use sqlx::types::Uuid;
 use tracing::{debug, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
@@ -16,12 +16,15 @@ use twilight_util::builder::command::{
 	CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder,
 };
 
-use crate::bot::{
-	action::SprintAnnounce,
-	parsers::{
-		command::{get_integer, get_string},
-		time::parse_when_relative_to,
+use crate::{
+	bot::{
+		action::{SprintAnnounce, SprintJoined},
+		utils::{
+			command::{get_integer, get_string},
+			time::parse_when_relative_to,
+		},
 	},
+	db::sprint::{Sprint, SprintStatus},
 };
 
 use super::App;
@@ -87,6 +90,9 @@ pub async fn on_component(
 		["announce", "join", uuid] => sprint_join(app.clone(), interaction, *uuid)
 			.await
 			.wrap_err("action: announce:join")?,
+		["announce", "cancel", uuid] => sprint_cancel(app.clone(), interaction, *uuid)
+			.await
+			.wrap_err("action: announce:cancel")?,
 		id => warn!(?id, "unhandled sprint component action"),
 	}
 
@@ -120,20 +126,13 @@ async fn sprint_start(
 	};
 
 	debug!(%starting, %duration, "recording sprint");
-	let id: Uuid =
-		sqlx::query("INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING id")
-			.bind(starting)
-			.bind(duration)
-			.fetch_one(&app.db)
-			.await
-			.into_diagnostic()
-			.wrap_err("storing to db")?
-			.try_get("id")
-			.into_diagnostic()
-			.wrap_err("getting stored id")?;
+	let id = Sprint::create(app.clone(), starting, duration).await?;
+	let sprint = Sprint::from_current(app.clone(), id)
+		.await
+		.wrap_err("BUG: new sprint isn't current!")?;
 
 	app.send_action(
-		SprintAnnounce::new(app.clone(), &interaction, id)
+		SprintAnnounce::new(app.clone(), &interaction, sprint)
 			.await
 			.wrap_err("rendering announce")?,
 	)
@@ -144,6 +143,36 @@ async fn sprint_start(
 
 async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let sprint = Sprint::from_current(app.clone(), uuid)
+		.await
+		.wrap_err("that sprint isn't current")?;
+
+	let guild_id = interaction
+		.guild_id
+		.ok_or(miette!("can only join sprint from a guild"))?;
+	let user = interaction
+		.member
+		.as_ref()
+		.and_then(|m| m.user.as_ref())
+		.ok_or(miette!("can only join sprint from a guild"))?;
+
+	if sprint.status()? >= SprintStatus::Ended {
+		return Err(miette!("sprint has already ended"));
+	}
+
+	sprint.join(app.clone(), guild_id, user.id).await?;
+
+	app.send_action(SprintJoined::new(&interaction, sprint))
+		.await?;
+
+	Ok(())
+}
+
+async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
+	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let sprint = Sprint::from_current(app.clone(), uuid)
+		.await
+		.wrap_err("that sprint isn't current")?;
 
 	Ok(())
 }

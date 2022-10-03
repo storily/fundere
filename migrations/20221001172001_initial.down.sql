@@ -1,5 +1,5 @@
 DROP VIEW sprints_current;
-DROP TABLE sprint_participant;
+DROP TABLE sprint_participants;
 DROP TABLE sprints;
 
 DROP DOMAIN member;

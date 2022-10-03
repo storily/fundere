@@ -1,6 +1,6 @@
 CREATE TYPE channel_t AS (
-	guild_id int,
-	channel_id int
+	guild_id int8,
+	channel_id int8
 );
 
 CREATE DOMAIN channel AS channel_t
@@ -10,8 +10,8 @@ CHECK (
 );
 
 CREATE TYPE member_t AS (
-	guild_id int,
-	user_id int
+	guild_id int8,
+	user_id int8
 );
 
 CREATE DOMAIN member AS member_t CHECK (
@@ -40,7 +40,7 @@ CREATE INDEX sprints_starting_at ON sprints (starting_at);
 CREATE INDEX sprints_cancelled ON sprints ((cancelled_at is null));
 CREATE INDEX sprints_current_idx ON sprints ((cancelled_at is not null), starting_at);
 
-CREATE TABLE sprint_participant (
+CREATE TABLE sprint_participants (
 	sprint_id uuid not null references sprints (id) on delete cascade,
 	member member not null,
 	joined_at timestamp with time zone not null default current_timestamp,
@@ -52,9 +52,9 @@ CREATE TABLE sprint_participant (
 );
 
 CREATE VIEW sprints_current AS
-	SELECT sprints.*, array_agg(sprint_participant.*) AS participants
+	SELECT sprints.*, array_agg(sprint_participants.*) AS participants
 	FROM sprints
-	LEFT JOIN sprint_participant ON sprints.id = sprint_participant.sprint_id
+	LEFT JOIN sprint_participants ON sprints.id = sprint_participants.sprint_id
 	WHERE true
 		AND sprints.cancelled_at IS NULL
 		AND (

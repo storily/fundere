@@ -1,9 +1,15 @@
 use std::{str::FromStr, time::Duration};
 
-use chrono::{DateTime, Utc};
-use miette::{IntoDiagnostic, Result};
-use sqlx::{postgres::types::PgInterval, types::Uuid, PgPool};
+use chrono::{DateTime, TimeZone, Utc};
+use miette::{Context, IntoDiagnostic, Result};
+use sqlx::{postgres::types::PgInterval, types::Uuid, PgPool, Row};
 use strum::{Display, EnumString};
+use twilight_model::id::{
+	marker::{GuildMarker, UserMarker},
+	Id,
+};
+
+use crate::bot::App;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -25,14 +31,64 @@ pub struct Sprint {
 }
 
 impl Sprint {
+	pub async fn create<TZ>(
+		app: App,
+		starting_at: DateTime<TZ>,
+		duration: chrono::Duration,
+	) -> Result<Uuid>
+	where
+		TZ: TimeZone,
+		TZ::Offset: Send,
+	{
+		sqlx::query("INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING id")
+			.bind(starting_at)
+			.bind(duration)
+			.fetch_one(&app.db)
+			.await
+			.into_diagnostic()
+			.wrap_err("storing to db")?
+			.try_get("id")
+			.into_diagnostic()
+			.wrap_err("getting stored id")
+	}
+
+	pub async fn from_current(app: App, uuid: Uuid) -> Result<Self> {
+		sqlx::query_as("SELECT * FROM sprints_current WHERE id = $1")
+			.bind(uuid)
+			.fetch_one(&app.db)
+			.await
+			.into_diagnostic()
+	}
+
 	pub async fn update_status(&self, pool: &PgPool, status: SprintStatus) -> Result<()> {
 		sqlx::query("UPDATE sprints SET status = $2 WHERE id = $1")
 			.bind(self.id)
 			.bind(status.to_string())
 			.execute(pool)
 			.await
-			.into_diagnostic()?;
-		Ok(())
+			.into_diagnostic()
+			.map(drop)
+	}
+
+	pub async fn join(
+		&self,
+		app: App,
+		guild_id: Id<GuildMarker>,
+		user_id: Id<UserMarker>,
+	) -> Result<()> {
+		// Discord snowflake IDs will never (read: unless they either change the
+		// schema or we're 10k years in the future) reach even 60 bits of length
+		// so we're quite safe casting them to i64
+
+		sqlx::query("INSERT INTO sprint_participants (sprint_id, member.guild_id, member.user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
+			.bind(self.id)
+			.bind(guild_id.get() as i64)
+			.bind(user_id.get() as i64)
+			.execute(&app.db)
+			.await
+			.into_diagnostic()
+			.wrap_err("join sprint")
+			.map(drop)
 	}
 
 	pub fn status(&self) -> Result<SprintStatus> {

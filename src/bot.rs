@@ -21,7 +21,7 @@ use self::action::CommandError;
 
 mod action;
 mod context;
-mod parsers;
+mod utils;
 mod sprint;
 
 pub async fn start(config: Config) -> Result<()> {
@@ -63,6 +63,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 		match action {
 			CommandError(data) => data.handle(&interaction_client).await,
 			SprintAnnounce(data) => data.handle(&interaction_client).await,
+			SprintJoined(data) => data.handle(&interaction_client).await,
 		}
 		.wrap_err(action_dbg)?;
 	}
