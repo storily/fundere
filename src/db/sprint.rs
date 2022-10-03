@@ -1,7 +1,7 @@
 use std::{str::FromStr, time::Duration};
 
 use chrono::{DateTime, Utc};
-use miette::{ IntoDiagnostic, Result};
+use miette::{IntoDiagnostic, Result};
 use sqlx::{postgres::types::PgInterval, types::Uuid, PgPool};
 use strum::{Display, EnumString};
 

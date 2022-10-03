@@ -21,6 +21,7 @@ use self::action::CommandError;
 
 mod action;
 mod context;
+mod parsers;
 mod sprint;
 
 pub async fn start(config: Config) -> Result<()> {
@@ -100,7 +101,7 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 	match &interaction.data {
 		Some(InteractionData::ApplicationCommand(data)) => {
 			if let Err(err) = match data.name.as_str() {
-				"sprint" => sprint::handle(app.clone(), interaction, &data)
+				"sprint" => sprint::on_command(app.clone(), interaction, &data)
 					.await
 					.wrap_err("command: sprint"),
 				cmd => {
@@ -110,6 +111,18 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 			} {
 				app.send_action(CommandError::new(interaction, err)?)
 					.await?;
+			}
+		}
+		Some(InteractionData::MessageComponent(data)) => {
+			let subids: Vec<&str> = data.custom_id.split(':').collect();
+			match subids.first() {
+				Some(&"sprint") => {
+					sprint::on_component(app.clone(), interaction, &subids[1..], &data)
+						.await
+						.wrap_err("component: sprint")?;
+				}
+				Some(other) => warn!("unhandled component action: {other:?}"),
+				None => {}
 			}
 		}
 		Some(other) => warn!("unhandled interaction: {other:?}"),
