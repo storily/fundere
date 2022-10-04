@@ -17,7 +17,7 @@ use twilight_model::{
 use crate::config::Config;
 pub(crate) use context::App;
 
-use self::action::CommandError;
+use self::{action::CommandError, context::Timer};
 
 mod action;
 mod calc;
@@ -33,14 +33,17 @@ pub async fn start(config: Config) -> Result<()> {
 		.into_diagnostic()?;
 
 	let (control, actions) = mpsc::channel(config.internal.control_buffer);
-	let app = App::new(config, pool, control);
+	let (timer, timings) = mpsc::channel(config.internal.timer_buffer);
+	let app = App::new(config, pool, control, timer);
 
+	let ticking = spawn(ticker(app.clone(), timings));
 	let listening = spawn(listener(app.clone()));
 	let controlling = spawn(controller(app, actions));
 
 	controlling.await.into_diagnostic()??;
 	info!("controller has finished, cancelling other tasks");
 	listening.abort();
+	ticking.abort();
 
 	info!("show's over, goodbye");
 	Ok(())
@@ -101,6 +104,21 @@ async fn listener(app: App) -> Result<()> {
 			}
 			.unwrap_or_else(|err| error!("{err:?}"))
 		});
+	}
+
+	Ok(())
+}
+
+#[tracing::instrument(skip_all)]
+async fn ticker(app: App, mut timings: Receiver<Timer>) -> Result<()> {
+	let mut timers = Vec::new();
+
+	info!("wait for timers");
+	while let Some(timer) = timings.recv().await {
+		// TODO: also listen for any timer to trigger
+		// if a timer triggers, take it out of the vec, and send its action on
+		debug!(?timer, "timer received");
+		timers.push(timer);
 	}
 
 	Ok(())
