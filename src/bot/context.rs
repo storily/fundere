@@ -6,7 +6,10 @@ use std::{
 
 use miette::{miette, IntoDiagnostic, Result};
 use sqlx::PgPool;
-use tokio::{sync::mpsc::Sender, time::Instant as TokioInstant};
+use tokio::{
+	sync::mpsc::Sender,
+	time::{sleep_until, Instant as TokioInstant, Sleep},
+};
 
 use super::action::Action;
 use crate::config::Config;
@@ -69,5 +72,9 @@ impl Timer {
 			.checked_add(duration)
 			.ok_or_else(|| miette!("cannot schedule that far into the future"))
 			.map(|time| Self::new_at(time.into(), payload))
+	}
+
+	pub fn to_sleep(&self) -> Sleep {
+		sleep_until(self.until)
 	}
 }

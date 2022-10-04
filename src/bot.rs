@@ -1,9 +1,9 @@
-use futures_util::StreamExt;
+use futures_util::{FutureExt, StreamExt};
 use miette::{Context, IntoDiagnostic, Result};
 use sqlx::postgres::PgPoolOptions;
 use tokio::{
 	sync::mpsc::{self, Receiver},
-	task::spawn,
+	task::{spawn, JoinSet},
 };
 use tracing::{debug, error, info, warn};
 use twilight_gateway::Shard;
@@ -111,17 +111,35 @@ async fn listener(app: App) -> Result<()> {
 
 #[tracing::instrument(skip_all)]
 async fn ticker(app: App, mut timings: Receiver<Timer>) -> Result<()> {
-	let mut timers = Vec::new();
+	info!("initialise ticker");
+	let mut timers = JoinSet::new();
 
-	info!("wait for timers");
-	while let Some(timer) = timings.recv().await {
-		// TODO: also listen for any timer to trigger
-		// if a timer triggers, take it out of the vec, and send its action on
-		debug!(?timer, "timer received");
-		timers.push(timer);
+	loop {
+		tokio::select! {
+			Some(timer) = timings.recv() => {
+				debug!(?timer, "timer received, enqueueing");
+				timers.spawn(timer.to_sleep().map(|_| timer.payload));
+			}
+			timer = timers.join_next() => {
+				match timer {
+					None => debug!("ticker timer set is empty"),
+					Some(Err(err)) => {
+						error!(%err, "timer has failed, this should never happen");
+					}
+					Some(Ok(payload)) => {
+						debug!(?payload, "timer has finished, executing");
+						app.send_action(payload).await.unwrap_or_else(|err| {
+							error!(%err, "sending timer payload failed");
+						});
+					}
+				}
+			}
+			else => {
+				debug!("ticker is finished");
+				break Ok(());
+			}
+		}
 	}
-
-	Ok(())
 }
 
 #[tracing::instrument(skip_all)]
