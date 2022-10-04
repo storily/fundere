@@ -71,10 +71,7 @@ impl Sprint {
 			.map(drop)
 	}
 
-	pub async fn cancel(
-		&self,
-		app: App,
-	) -> Result<()> {
+	pub async fn cancel(&self, app: App) -> Result<()> {
 		sqlx::query("UPDATE sprints SET cancelled_at = CURRENT_TIMESTAMP WHERE id = $1")
 			.bind(self.id)
 			.execute(&app.db)

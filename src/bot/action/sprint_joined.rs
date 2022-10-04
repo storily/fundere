@@ -6,8 +6,9 @@ use twilight_model::{
 		component::{button::ButtonStyle, Button, Component},
 		interaction::Interaction,
 	},
+	channel::message::MessageFlags,
 	http::interaction::{InteractionResponse, InteractionResponseType},
-	id::{marker::InteractionMarker, Id}, channel::message::MessageFlags,
+	id::{marker::InteractionMarker, Id},
 };
 use twilight_util::builder::InteractionResponseDataBuilder;
 
@@ -23,7 +24,7 @@ pub struct SprintJoined {
 }
 
 impl SprintJoined {
-	#[tracing::instrument(skip(interaction))]
+	#[tracing::instrument(name = "SprintJoined", skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: Sprint) -> Action {
 		Action::SprintJoined(Self {
 			id: interaction.id,

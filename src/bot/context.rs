@@ -4,7 +4,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
-use miette::{IntoDiagnostic, Result, miette};
+use miette::{miette, IntoDiagnostic, Result};
 use sqlx::PgPool;
 use tokio::{sync::mpsc::Sender, time::Instant as TokioInstant};
 

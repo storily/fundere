@@ -13,7 +13,7 @@ use twilight_model::{
 use twilight_util::builder::InteractionResponseDataBuilder;
 
 use crate::{
-	bot::{App, utils::action_row},
+	bot::{utils::action_row, App},
 	db::sprint::{Sprint, SprintStatus},
 };
 
@@ -28,7 +28,7 @@ pub struct SprintAnnounce {
 }
 
 impl SprintAnnounce {
-	#[tracing::instrument(skip(app, interaction))]
+	#[tracing::instrument(name = "SprintAnnounce", skip(app, interaction))]
 	pub async fn new(app: App, interaction: &Interaction, sprint: Sprint) -> Result<Action> {
 		if sprint.status()? >= SprintStatus::Announced {
 			return Err(miette!("Bug: went to announce sprint but it was already"));

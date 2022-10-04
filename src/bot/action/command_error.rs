@@ -19,7 +19,7 @@ pub struct CommandError {
 	pub error: String,
 }
 impl CommandError {
-	#[tracing::instrument(skip(interaction))]
+	#[tracing::instrument(name = "CommandError", skip(interaction))]
 	pub fn new(interaction: &Interaction, err: Report) -> Result<Action> {
 		let handler = GraphicalReportHandler::new_themed(GraphicalTheme::unicode_nocolor());
 		let mut error = String::from("Error:\n```");

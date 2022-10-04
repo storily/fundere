@@ -18,7 +18,7 @@ use twilight_util::builder::command::{
 
 use crate::{
 	bot::{
-		action::{SprintAnnounce, SprintJoined, SprintCancelled},
+		action::{SprintAnnounce, SprintCancelled, SprintJoined},
 		utils::{
 			command::{get_integer, get_string},
 			time::parse_when_relative_to,

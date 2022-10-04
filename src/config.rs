@@ -130,6 +130,9 @@ pub struct InternalConfig {
 
 impl Default for InternalConfig {
 	fn default() -> Self {
-		Self { control_buffer: 64, timer_buffer: 16 }
+		Self {
+			control_buffer: 64,
+			timer_buffer: 16,
+		}
 	}
 }

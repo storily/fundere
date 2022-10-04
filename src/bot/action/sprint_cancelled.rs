@@ -19,7 +19,7 @@ pub struct SprintCancelled {
 }
 
 impl SprintCancelled {
-	#[tracing::instrument(skip(interaction))]
+	#[tracing::instrument(name = "SprintCancelled", skip(interaction))]
 	pub fn new(interaction: &Interaction, user: &User) -> Action {
 		Action::SprintCancelled(Self {
 			id: interaction.id,

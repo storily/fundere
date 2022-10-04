@@ -6,7 +6,10 @@ use twilight_model::application::{
 };
 use twilight_util::builder::command::{BooleanBuilder, CommandBuilder, StringBuilder};
 
-use crate::bot::{action::CalcResult, utils::command::{get_string, get_boolean}};
+use crate::bot::{
+	action::CalcResult,
+	utils::command::{get_boolean, get_string},
+};
 
 use super::App;
 

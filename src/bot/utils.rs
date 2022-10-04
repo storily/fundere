@@ -1,6 +1,6 @@
 use std::iter::once;
 
-use twilight_model::application::component::{Component, ActionRow};
+use twilight_model::application::component::{ActionRow, Component};
 
 pub mod command;
 pub mod time;
