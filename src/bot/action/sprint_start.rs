@@ -53,7 +53,8 @@ impl SprintStart {
 
 		interaction_client
 			.create_followup(&self.token)
-			.content(&content).into_diagnostic()?
+			.content(&content)
+			.into_diagnostic()?
 			.components(&action_row(vec![Component::Button(Button {
 				custom_id: Some(format!("sprint:join:{id}")),
 				disabled: false,
@@ -61,7 +62,8 @@ impl SprintStart {
 				label: Some("Join late".to_string()),
 				style: ButtonStyle::Primary,
 				url: None,
-			})])).into_diagnostic()?
+			})]))
+			.into_diagnostic()?
 			.exec()
 			.await
 			.into_diagnostic()?;

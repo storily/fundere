@@ -102,6 +102,23 @@ impl Sprint {
 			.map(drop)
 	}
 
+	pub async fn leave(
+		&self,
+		app: App,
+		guild_id: Id<GuildMarker>,
+		user_id: Id<UserMarker>,
+	) -> Result<()> {
+		sqlx::query("DELETE FROM sprint_participants WHERE sprint_id = $1 AND (member).guild_id = $2 AND (member).user_id = $3")
+			.bind(self.id)
+			.bind(guild_id.get() as i64)
+			.bind(user_id.get() as i64)
+			.execute(&app.db)
+			.await
+			.into_diagnostic()
+			.wrap_err("db: leave sprint")
+			.map(drop)
+	}
+
 	pub fn status(&self) -> Result<SprintStatus> {
 		SprintStatus::from_str(&self.status).into_diagnostic()
 	}

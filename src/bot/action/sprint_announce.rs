@@ -16,7 +16,12 @@ use twilight_model::{
 use twilight_util::builder::InteractionResponseDataBuilder;
 
 use crate::{
-	bot::{action::{SprintStart, SprintWarning}, context::Timer, utils::action_row, App},
+	bot::{
+		action::{SprintStart, SprintWarning},
+		context::Timer,
+		utils::action_row,
+		App,
+	},
 	db::sprint::{Sprint, SprintStatus},
 };
 

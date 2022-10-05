@@ -3,6 +3,7 @@ pub use self::command_error::CommandError;
 pub use self::sprint_announce::SprintAnnounce;
 pub use self::sprint_cancelled::SprintCancelled;
 pub use self::sprint_joined::SprintJoined;
+pub use self::sprint_left::SprintLeft;
 pub use self::sprint_start::SprintStart;
 pub use self::sprint_warning::SprintWarning;
 
@@ -11,6 +12,7 @@ pub mod command_error;
 pub mod sprint_announce;
 pub mod sprint_cancelled;
 pub mod sprint_joined;
+pub mod sprint_left;
 pub mod sprint_start;
 pub mod sprint_warning;
 
@@ -21,6 +23,7 @@ pub enum Action {
 	SprintAnnounce(SprintAnnounce),
 	SprintCancelled(SprintCancelled),
 	SprintJoined(SprintJoined),
+	SprintLeft(SprintLeft),
 	SprintStart(SprintStart),
 	SprintWarning(SprintWarning),
 }

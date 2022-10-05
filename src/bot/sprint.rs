@@ -27,7 +27,7 @@ use crate::{
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::App;
+use super::{action::SprintLeft, App};
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -91,6 +91,9 @@ pub async fn on_component(
 		["join", uuid] => sprint_join(app.clone(), interaction, *uuid)
 			.await
 			.wrap_err("action: join")?,
+		["leave", uuid] => sprint_leave(app.clone(), interaction, *uuid)
+			.await
+			.wrap_err("action: leave")?,
 		["cancel", uuid] => sprint_cancel(app.clone(), interaction, *uuid)
 			.await
 			.wrap_err("action: cancel")?,
@@ -164,6 +167,33 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 	sprint.join(app.clone(), guild_id, user.id).await?;
 
 	app.send_action(SprintJoined::new(&interaction, sprint))
+		.await?;
+
+	Ok(())
+}
+
+async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
+	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let sprint = Sprint::from_current(app.clone(), uuid)
+		.await
+		.wrap_err("that sprint isn't current")?;
+
+	let guild_id = interaction
+		.guild_id
+		.ok_or(miette!("can only leave sprint from a guild"))?;
+	let user = interaction
+		.member
+		.as_ref()
+		.and_then(|m| m.user.as_ref())
+		.ok_or(miette!("can only leave sprint from a guild"))?;
+
+	if sprint.status()? >= SprintStatus::Ended {
+		return Err(miette!("sprint has already ended"));
+	}
+
+	sprint.leave(app.clone(), guild_id, user.id).await?;
+
+	app.send_action(SprintLeft::new(&interaction, sprint))
 		.await?;
 
 	Ok(())

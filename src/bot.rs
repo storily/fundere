@@ -74,10 +74,12 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 			SprintAnnounce(data) => data.handle(&interaction_client).await,
 			SprintCancelled(data) => data.handle(&interaction_client).await,
 			SprintJoined(data) => data.handle(&interaction_client).await,
+			SprintLeft(data) => data.handle(&interaction_client).await,
 			SprintStart(data) => data.handle(app.clone(), &interaction_client).await,
 			SprintWarning(data) => data.handle(app.clone(), &interaction_client).await,
 		}
-		.wrap_err(action_dbg).unwrap_or_else(|err| error!("{err}"));
+		.wrap_err(action_dbg)
+		.unwrap_or_else(|err| error!("{err}"));
 	}
 
 	Ok(())
