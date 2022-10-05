@@ -94,7 +94,7 @@ impl SprintAnnounce {
 							.content(self.content)
 							.components(action_row(vec![
 								Component::Button(Button {
-									custom_id: Some(format!("sprint:announce:join:{sprint_id}")),
+									custom_id: Some(format!("sprint:join:{sprint_id}")),
 									disabled: false,
 									emoji: None,
 									label: Some("Join".to_string()),
@@ -102,7 +102,7 @@ impl SprintAnnounce {
 									url: None,
 								}),
 								Component::Button(Button {
-									custom_id: Some(format!("sprint:announce:cancel:{sprint_id}")),
+									custom_id: Some(format!("sprint:cancel:{sprint_id}")),
 									disabled: false,
 									emoji: None,
 									label: Some("Cancel".to_string()),

@@ -88,12 +88,12 @@ pub async fn on_component(
 	debug!(?subids, ?component_data, "sprint component action");
 
 	match subids {
-		["announce", "join", uuid] => sprint_join(app.clone(), interaction, *uuid)
+		["join", uuid] => sprint_join(app.clone(), interaction, *uuid)
 			.await
-			.wrap_err("action: announce:join")?,
-		["announce", "cancel", uuid] => sprint_cancel(app.clone(), interaction, *uuid)
+			.wrap_err("action: join")?,
+		["cancel", uuid] => sprint_cancel(app.clone(), interaction, *uuid)
 			.await
-			.wrap_err("action: announce:cancel")?,
+			.wrap_err("action: cancel")?,
 		id => warn!(?id, "unhandled sprint component action"),
 	}
 

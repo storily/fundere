@@ -58,7 +58,7 @@ impl SprintWarning {
 			.into_diagnostic()?
 			.components(&action_row(vec![
 				Component::Button(Button {
-					custom_id: Some(format!("sprint:warn:join:{id}")),
+					custom_id: Some(format!("sprint:join:{id}")),
 					disabled: false,
 					emoji: None,
 					label: Some("Join".to_string()),
@@ -66,7 +66,7 @@ impl SprintWarning {
 					url: None,
 				}),
 				Component::Button(Button {
-					custom_id: Some(format!("sprint:warn:start-words:{id}")),
+					custom_id: Some(format!("sprint:start-words:{id}")),
 					disabled: false,
 					emoji: None,
 					label: Some("Starting words".to_string()),

@@ -55,7 +55,7 @@ impl SprintStart {
 			.create_followup(&self.token)
 			.content(&content).into_diagnostic()?
 			.components(&action_row(vec![Component::Button(Button {
-				custom_id: Some(format!("sprint:start:join:{id}")),
+				custom_id: Some(format!("sprint:join:{id}")),
 				disabled: false,
 				emoji: None,
 				label: Some("Join late".to_string()),

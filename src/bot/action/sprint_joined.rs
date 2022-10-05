@@ -50,7 +50,7 @@ impl SprintJoined {
 							.components(action_row(vec![
 								Component::Button(Button {
 									custom_id: Some(format!(
-										"sprint:joined:start-words:{sprint_id}"
+										"sprint:start-words:{sprint_id}"
 									)),
 									disabled: false,
 									emoji: None,
@@ -59,7 +59,7 @@ impl SprintJoined {
 									url: None,
 								}),
 								Component::Button(Button {
-									custom_id: Some(format!("sprint:joined:leave:{sprint_id}")),
+									custom_id: Some(format!("sprint:leave:{sprint_id}")),
 									disabled: false,
 									emoji: None,
 									label: Some("Leave".to_string()),
