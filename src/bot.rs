@@ -32,9 +32,10 @@ pub async fn start(config: Config) -> Result<()> {
 		.await
 		.into_diagnostic()?;
 
+	let client = Client::new(config.discord.token.clone());
 	let (control, actions) = mpsc::channel(config.internal.control_buffer);
 	let (timer, timings) = mpsc::channel(config.internal.timer_buffer);
-	let app = App::new(config, pool, control, timer);
+	let app = App::new(config, pool, client, control, timer);
 
 	let ticking = spawn(ticker(app.clone(), timings));
 	let listening = spawn(listener(app.clone()));

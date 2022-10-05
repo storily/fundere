@@ -20,6 +20,7 @@ clap = { version = "4.0.7", features = ["derive", "cargo"] }
 fend-core = "1.1.1"
 futures-util = "0.3.24"
 humantime = "2.1.0"
+itertools = "0.10.5"
 knuffel = "2.0.0"
 miette = { version = "4.7.1", features = ["fancy"] }
 sqlx = { version = "0.5.10", features = ["runtime-tokio-rustls", "postgres", "macros", "migrate", "uuid", "time", "json", "chrono"] }

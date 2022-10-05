@@ -2,11 +2,20 @@ use std::{str::FromStr, time::Duration};
 
 use chrono::{DateTime, TimeZone, Utc};
 use miette::{Context, IntoDiagnostic, Result};
-use sqlx::{postgres::types::PgInterval, types::Uuid, Row};
+use sqlx::{
+	postgres::{types::PgInterval, PgHasArrayType, PgTypeInfo},
+	types::Uuid,
+	Row,
+};
 use strum::{Display, EnumString};
-use twilight_model::id::{
-	marker::{GuildMarker, UserMarker},
-	Id,
+use twilight_mention::{fmt::MentionFormat, Mention};
+use twilight_model::{
+	guild::Member as DiscordMember,
+	id::{
+		marker::{GuildMarker, UserMarker},
+		Id,
+	},
+	user::User,
 };
 
 use crate::bot::App;
@@ -21,6 +30,65 @@ pub enum SprintStatus {
 	Summaried,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow, sqlx::Type)]
+#[sqlx(type_name = "member")]
+pub struct Member {
+	pub guild_id: i64,
+	pub user_id: i64,
+}
+
+impl Member {
+	pub async fn to_user(&self, app: App) -> Result<User> {
+		app.client
+			.user(Id::new(self.user_id as _))
+			.exec()
+			.await
+			.into_diagnostic()?
+			.model()
+			.await
+			.into_diagnostic()
+	}
+
+	pub async fn to_member(&self, app: App) -> Result<DiscordMember> {
+		app.client
+			.guild_member(Id::new(self.guild_id as _), Id::new(self.user_id as _))
+			.exec()
+			.await
+			.into_diagnostic()?
+			.model()
+			.await
+			.into_diagnostic()
+	}
+}
+
+impl Mention<Id<UserMarker>> for Member {
+	fn mention(&self) -> MentionFormat<Id<UserMarker>> {
+		Id::new(self.user_id as _).mention()
+	}
+}
+
+#[derive(Debug, Clone, sqlx::FromRow, sqlx::Type)]
+#[sqlx(type_name = "sprint_participants")]
+pub struct Participant {
+	pub sprint_id: Uuid,
+	pub member: Member,
+	pub joined_at: DateTime<Utc>,
+	pub words_start: Option<i32>,
+	pub words_end: Option<i32>,
+}
+
+impl Mention<Id<UserMarker>> for Participant {
+	fn mention(&self) -> MentionFormat<Id<UserMarker>> {
+		self.member.mention()
+	}
+}
+
+impl PgHasArrayType for Participant {
+	fn array_type_info() -> PgTypeInfo {
+		PgTypeInfo::with_name("sprint_participants")
+	}
+}
+
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Sprint {
 	pub id: Uuid,
@@ -28,6 +96,7 @@ pub struct Sprint {
 	pub starting_at: DateTime<Utc>,
 	pub duration: PgInterval,
 	pub status: String,
+	pub participants: Vec<Participant>,
 }
 
 impl Sprint {

@@ -1,7 +1,9 @@
 use humantime::format_duration;
+use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
 use sqlx::types::Uuid;
 use twilight_http::client::InteractionClient;
+use twilight_mention::Mention;
 use twilight_model::{
 	application::{
 		component::{button::ButtonStyle, Button, Component},
@@ -42,8 +44,12 @@ impl SprintStart {
 
 		let Sprint { id, shortid, .. } = sprint;
 		let duration = format_duration(sprint.duration());
-		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}!");
-		// TODO: mention participants
+		let participants = sprint
+			.participants
+			.iter()
+			.map(|p| p.mention().to_string())
+			.join(", ");
+		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}!\nWith {} participants: {participants}", participants.len());
 		// TODO: ding
 		// TODO: schedule end
 

@@ -10,6 +10,7 @@ use tokio::{
 	sync::mpsc::Sender,
 	time::{sleep_until, Instant as TokioInstant, Sleep},
 };
+use twilight_http::Client;
 
 use super::action::Action;
 use crate::config::Config;
@@ -18,19 +19,27 @@ use crate::config::Config;
 #[repr(transparent)]
 pub struct App(Arc<AppContext>);
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct AppContext {
 	pub config: Config,
 	pub db: PgPool,
+	pub client: Client,
 	pub control: Sender<Action>,
 	pub timer: Sender<Timer>,
 }
 
 impl App {
-	pub fn new(config: Config, db: PgPool, control: Sender<Action>, timer: Sender<Timer>) -> Self {
+	pub fn new(
+		config: Config,
+		db: PgPool,
+		client: Client,
+		control: Sender<Action>,
+		timer: Sender<Timer>,
+	) -> Self {
 		Self(Arc::new(AppContext {
 			config,
 			db,
+			client,
 			control,
 			timer,
 		}))
