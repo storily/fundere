@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use humantime::format_duration;
 use miette::{miette, IntoDiagnostic, Result};
 use sqlx::types::Uuid;
+use tracing::debug;
 use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::{
@@ -13,7 +16,7 @@ use twilight_model::{
 use twilight_util::builder::InteractionResponseDataBuilder;
 
 use crate::{
-	bot::{utils::action_row, App},
+	bot::{action::{SprintStart, SprintWarning}, context::Timer, utils::action_row, App},
 	db::sprint::{Sprint, SprintStatus},
 };
 
@@ -38,20 +41,37 @@ impl SprintAnnounce {
 			.starting_at
 			.with_timezone(&chrono_tz::Pacific::Auckland)
 			.format("%H:%M:%S");
-		let starting_in = format_duration(
-			sprint
-				.starting_in()
-				.ok_or(miette!("Bug: sprint start is in the past"))?,
-		);
 
+		let starting_in = sprint
+			.starting_in()
+			.ok_or(miette!("Bug: sprint start is in the past"))?;
+
+		let shortid = sprint.shortid;
 		let duration = format_duration(sprint.duration());
+		let starting_in_disp = format_duration(starting_in);
 		let content = format!(
-			"⏱️ New sprint! Starting in {starting_in} (at {starting_at}), going for {duration}."
+			"⏱️  New sprint! `{shortid}` is starting in {starting_in_disp} (at {starting_at}), going for {duration}."
 		);
 
 		sprint
 			.update_status(app.clone(), SprintStatus::Announced)
 			.await?;
+
+		if starting_in > Duration::from_secs(60) {
+			debug!("set up sprint warn timer");
+			app.send_timer(Timer::new_after(
+				starting_in - Duration::from_secs(30),
+				SprintWarning::new(interaction, sprint.id),
+			)?)
+			.await?;
+		}
+
+		debug!("set up sprint start timer");
+		app.send_timer(Timer::new_after(
+			starting_in,
+			SprintStart::new(interaction, sprint.id),
+		)?)
+		.await?;
 
 		Ok(Action::SprintAnnounce(Self {
 			id: interaction.id,

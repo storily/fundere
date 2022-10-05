@@ -20,11 +20,11 @@ pub struct SprintCancelled {
 
 impl SprintCancelled {
 	#[tracing::instrument(name = "SprintCancelled", skip(interaction))]
-	pub fn new(interaction: &Interaction, user: &User) -> Action {
+	pub fn new(interaction: &Interaction, shortid: i32, user: &User) -> Action {
 		Action::SprintCancelled(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
-			content: format!("❌ Sprint was cancelled by {}", user.id.mention()),
+			content: format!("❌ Sprint {shortid} was cancelled by {}", user.id.mention()),
 		})
 	}
 

@@ -74,8 +74,10 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 			SprintAnnounce(data) => data.handle(&interaction_client).await,
 			SprintCancelled(data) => data.handle(&interaction_client).await,
 			SprintJoined(data) => data.handle(&interaction_client).await,
+			SprintStart(data) => data.handle(app.clone(), &interaction_client).await,
+			SprintWarning(data) => data.handle(app.clone(), &interaction_client).await,
 		}
-		.wrap_err(action_dbg)?;
+		.wrap_err(action_dbg).unwrap_or_else(|err| error!("{err}"));
 	}
 
 	Ok(())
@@ -115,28 +117,40 @@ async fn ticker(app: App, mut timings: Receiver<Timer>) -> Result<()> {
 	let mut timers = JoinSet::new();
 
 	loop {
-		tokio::select! {
-			Some(timer) = timings.recv() => {
+		if timers.is_empty() {
+			debug!("timer queue is empty, watching channel only");
+			if let Some(timer) = timings.recv().await {
 				debug!(?timer, "timer received, enqueueing");
 				timers.spawn(timer.to_sleep().map(|_| timer.payload));
+			} else {
+				debug!("queue is empty and channel is done, ticker exiting");
+				break Ok(());
 			}
-			timer = timers.join_next() => {
-				match timer {
-					None => debug!("ticker timer set is empty"),
-					Some(Err(err)) => {
-						error!(%err, "timer has failed, this should never happen");
-					}
-					Some(Ok(payload)) => {
-						debug!(?payload, "timer has finished, executing");
-						app.send_action(payload).await.unwrap_or_else(|err| {
-							error!(%err, "sending timer payload failed");
-						});
+		} else {
+			debug!("watching channel and timers");
+			tokio::select! {
+				Some(timer) = timings.recv() => {
+					debug!(?timer, "timer received, enqueueing");
+					timers.spawn(timer.to_sleep().map(|_| timer.payload));
+				}
+				timer = timers.join_next() => {
+					match timer {
+						None => warn!("ticker timer set is empty, which shouldn't happen on this branch"),
+						Some(Err(err)) => {
+							error!(%err, "timer has failed, this should never happen");
+						}
+						Some(Ok(payload)) => {
+							debug!(?payload, "timer has finished, executing");
+							app.send_action(payload).await.unwrap_or_else(|err| {
+								error!(%err, "sending timer payload failed");
+							});
+						}
 					}
 				}
-			}
-			else => {
-				debug!("ticker is finished");
-				break Ok(());
+				else => {
+					debug!("ticker is finished");
+					break Ok(());
+				}
 			}
 		}
 	}

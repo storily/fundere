@@ -20,7 +20,8 @@ use super::Action;
 pub struct SprintJoined {
 	pub id: Id<InteractionMarker>,
 	pub token: String,
-	pub sprint: Uuid,
+	pub sprint_id: Uuid,
+	pub shortid: i32,
 }
 
 impl SprintJoined {
@@ -29,12 +30,13 @@ impl SprintJoined {
 		Action::SprintJoined(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
-			sprint: sprint.id,
+			sprint_id: sprint.id,
+			shortid: sprint.shortid,
 		})
 	}
 
 	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
-		let sprint_id = self.sprint;
+		let Self { sprint_id, shortid, .. } = self;
 		interaction_client
 			.create_response(
 				self.id,
@@ -43,7 +45,7 @@ impl SprintJoined {
 					kind: InteractionResponseType::ChannelMessageWithSource,
 					data: Some(
 						InteractionResponseDataBuilder::new()
-							.content("You've joined the sprint!")
+							.content(format!("You've joined sprint `{shortid}`!"))
 							.flags(MessageFlags::EPHEMERAL)
 							.components(action_row(vec![
 								Component::Button(Button {

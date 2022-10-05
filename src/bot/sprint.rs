@@ -187,7 +187,7 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 
 	sprint.cancel(app.clone()).await?;
 
-	app.send_action(SprintCancelled::new(&interaction, user))
+	app.send_action(SprintCancelled::new(&interaction, sprint.shortid, user))
 		.await?;
 
 	Ok(())
