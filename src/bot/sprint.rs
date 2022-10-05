@@ -129,11 +129,22 @@ async fn sprint_start(
 		now_with_time
 	};
 
+	let guild_id = interaction
+		.guild_id
+		.ok_or(miette!("can only join sprint from a guild"))?;
+	let user = interaction
+		.member
+		.as_ref()
+		.and_then(|m| m.user.as_ref())
+		.ok_or(miette!("can only join sprint from a guild"))?;
+
 	debug!(%starting, %duration, "recording sprint");
 	let id = Sprint::create(app.clone(), starting, duration).await?;
 	let sprint = Sprint::from_current(app.clone(), id)
 		.await
 		.wrap_err("BUG: new sprint isn't current!")?;
+	debug!("joining own sprint");
+	sprint.join(app.clone(), guild_id, user.id).await?;
 
 	app.send_action(
 		SprintAnnounce::new(app.clone(), &interaction, sprint)
