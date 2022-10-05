@@ -85,7 +85,7 @@ impl Mention<Id<UserMarker>> for Participant {
 
 impl PgHasArrayType for Participant {
 	fn array_type_info() -> PgTypeInfo {
-		PgTypeInfo::with_name("sprint_participants")
+		PgTypeInfo::with_name("_sprint_participants")
 	}
 }
 

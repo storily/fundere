@@ -52,7 +52,9 @@ CREATE TABLE sprint_participants (
 );
 
 CREATE VIEW sprints_current AS
-	SELECT sprints.*, array_agg(sprint_participants.*) AS participants
+	SELECT
+		sprints.*,
+		array_remove(array_agg(sprint_participants.*), NULL) AS participants
 	FROM sprints
 	LEFT JOIN sprint_participants ON sprints.id = sprint_participants.sprint_id
 	WHERE true
