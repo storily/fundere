@@ -22,6 +22,7 @@ async fn main() -> Result<()> {
 			db::migrate::migrate(&mut client).await?;
 			querying.abort();
 		}
+		#[cfg(debug_assertions)]
 		Command::ResetDb => {
 			let (mut client, db_task) = config.db.connect().await?;
 			let querying = tokio::spawn(db_task);
@@ -54,7 +55,8 @@ enum Command {
 	/// Migrate database
 	Migrate,
 
-	/// Reset and then migrate database
+	#[cfg(debug_assertions)]
+	/// Reset and then migrate database (dev only)
 	ResetDb,
 
 	/// Start bot
