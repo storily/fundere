@@ -1,7 +1,7 @@
-use std::{ffi::OsString, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 pub(crate) mod bot;
 pub(crate) mod config;
@@ -16,9 +16,25 @@ async fn main() -> Result<()> {
 	let config = config::Config::load(&cli.config).await?;
 
 	match cli.command {
-		Command::Sqlx { args } => sqlx(config, args).await,
-		Command::Start => bot::start(config).await,
+		Command::Migrate => {
+			let (mut client, db_task) = config.db.connect().await?;
+			let querying = tokio::spawn(db_task);
+			db::migrate::migrate(&mut client).await?;
+			querying.abort();
+		}
+		Command::ResetDb => {
+			let (mut client, db_task) = config.db.connect().await?;
+			let querying = tokio::spawn(db_task);
+			db::migrate::drop(&client).await?;
+			db::migrate::migrate(&mut client).await?;
+			querying.abort();
+		}
+		Command::Start => {
+			bot::start(config).await?;
+		}
 	}
+
+	Ok(())
 }
 
 /// Sassbot (Fundere edition)
@@ -35,22 +51,12 @@ struct Cli {
 
 #[derive(Clone, Debug, Subcommand)]
 enum Command {
-	/// Run sqlx with the DATABASE_URL env set
-	Sqlx {
-		#[arg(raw = true)]
-		args: Vec<OsString>,
-	},
+	/// Migrate database
+	Migrate,
+
+	/// Reset and then migrate database
+	ResetDb,
 
 	/// Start bot
 	Start,
-}
-
-async fn sqlx(config: config::Config, args: Vec<OsString>) -> Result<()> {
-	let mut proc = tokio::process::Command::new("sqlx")
-		.args(args)
-		.env("DATABASE_URL", config.db.url.as_deref().unwrap_or("foo"))
-		.spawn()
-		.into_diagnostic()?;
-	proc.wait().await.into_diagnostic()?;
-	Ok(())
 }

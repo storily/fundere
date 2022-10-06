@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use humantime::format_duration;
 use miette::{miette, IntoDiagnostic, Result};
-use sqlx::types::Uuid;
 use tracing::debug;
 use twilight_http::client::InteractionClient;
 use twilight_model::{
@@ -14,6 +13,7 @@ use twilight_model::{
 	id::{marker::InteractionMarker, Id},
 };
 use twilight_util::builder::InteractionResponseDataBuilder;
+use uuid::Uuid;
 
 use crate::{
 	bot::{
@@ -38,7 +38,7 @@ pub struct SprintAnnounce {
 impl SprintAnnounce {
 	#[tracing::instrument(name = "SprintAnnounce", skip(app, interaction))]
 	pub async fn new(app: App, interaction: &Interaction, sprint: Sprint) -> Result<Action> {
-		if sprint.status()? >= SprintStatus::Announced {
+		if sprint.status >= SprintStatus::Announced {
 			return Err(miette!("Bug: went to announce sprint but it was already"));
 		}
 

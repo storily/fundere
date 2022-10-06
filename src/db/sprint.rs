@@ -1,27 +1,22 @@
-use std::{str::FromStr, time::Duration};
+use std::time::Duration;
 
 use chrono::{DateTime, TimeZone, Utc};
-use miette::{Context, IntoDiagnostic, Result};
-use sqlx::{
-	postgres::{types::PgInterval, PgHasArrayType, PgTypeInfo},
-	types::Uuid,
-	Postgres, Row, Type, TypeInfo,
-};
-use strum::{Display, EnumString};
+use miette::{miette, Context, IntoDiagnostic, Result};
+use pg_interval::Interval;
+use postgres_types::{FromSql, ToSql};
+use tokio_postgres::Row;
 use twilight_mention::{fmt::MentionFormat, Mention};
-use twilight_model::{
-	guild::Member as DiscordMember,
-	id::{
-		marker::{GuildMarker, UserMarker},
-		Id,
-	},
-	user::User,
+use twilight_model::id::{
+	marker::{GuildMarker, UserMarker},
+	Id,
 };
+use uuid::Uuid;
 
 use crate::bot::App;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, EnumString, Display)]
-#[strum(serialize_all = "lowercase")]
+use super::types::Member;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ToSql, FromSql)]
 pub enum SprintStatus {
 	Initial,
 	Announced,
@@ -30,53 +25,7 @@ pub enum SprintStatus {
 	Summaried,
 }
 
-#[derive(Debug, Clone, sqlx::Encode, sqlx::Decode)]
-pub struct Member {
-	pub guild_id: i64,
-	pub user_id: i64,
-}
-
-impl Type<Postgres> for Member {
-	fn type_info() -> PgTypeInfo {
-		PgTypeInfo::with_name("member_t")
-	}
-
-	fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
-		ty.name() == "member" || ty.name() == "member_t"
-	}
-}
-
-impl Member {
-	pub async fn to_user(&self, app: App) -> Result<User> {
-		app.client
-			.user(Id::new(self.user_id as _))
-			.exec()
-			.await
-			.into_diagnostic()?
-			.model()
-			.await
-			.into_diagnostic()
-	}
-
-	pub async fn to_member(&self, app: App) -> Result<DiscordMember> {
-		app.client
-			.guild_member(Id::new(self.guild_id as _), Id::new(self.user_id as _))
-			.exec()
-			.await
-			.into_diagnostic()?
-			.model()
-			.await
-			.into_diagnostic()
-	}
-}
-
-impl Mention<Id<UserMarker>> for Member {
-	fn mention(&self) -> MentionFormat<Id<UserMarker>> {
-		Id::new(self.user_id as _).mention()
-	}
-}
-
-#[derive(Debug, Clone, sqlx::FromRow, sqlx::Encode, sqlx::Decode)]
+#[derive(Debug, Clone, ToSql, FromSql)]
 pub struct Participant {
 	pub sprint_id: Uuid,
 	pub member: Member,
@@ -85,39 +34,39 @@ pub struct Participant {
 	pub words_end: Option<i32>,
 }
 
-impl Type<Postgres> for Participant {
-	fn type_info() -> PgTypeInfo {
-		PgTypeInfo::with_name("participant")
-	}
-
-	fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
-		ty.name() == "participant"
-	}
-}
-
 impl Mention<Id<UserMarker>> for Participant {
 	fn mention(&self) -> MentionFormat<Id<UserMarker>> {
 		self.member.mention()
 	}
 }
 
-impl PgHasArrayType for Participant {
-	fn array_type_info() -> PgTypeInfo {
-		PgTypeInfo::with_name("_sprint_participants")
-	}
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone)]
 pub struct Sprint {
 	pub id: Uuid,
 	pub shortid: i32,
 	pub starting_at: DateTime<Utc>,
-	pub duration: PgInterval,
-	pub status: String,
+	pub duration: Interval,
+	pub status: SprintStatus,
 	pub participants: Vec<Participant>,
 }
 
 impl Sprint {
+	fn from_row(row: Row) -> Result<Self> {
+		Ok(Self {
+			id: row.try_get("id").into_diagnostic()?,
+			shortid: row.try_get("shortid").into_diagnostic()?,
+			starting_at: row.try_get("starting_at").into_diagnostic()?,
+			duration: row.try_get("duration").into_diagnostic()?,
+			status: row.try_get("status").into_diagnostic()?,
+			participants: match row.try_get("participants") {
+				Ok(p) => p,
+				Err(e) => match e {
+					_ => todo!(),
+				},
+			},
+		})
+	}
+
 	pub async fn create<TZ>(
 		app: App,
 		starting_at: DateTime<TZ>,
@@ -125,33 +74,37 @@ impl Sprint {
 	) -> Result<Uuid>
 	where
 		TZ: TimeZone,
-		TZ::Offset: Send,
 	{
-		sqlx::query("INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING id")
-			.bind(starting_at)
-			.bind(duration)
-			.fetch_one(&app.pool)
+		app.db
+			.query_one(
+				"INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING id",
+				&[
+					&starting_at.with_timezone(&Utc),
+					&Interval::from_duration(duration)
+						.ok_or(miette!("could not convert duration to interval"))?,
+				],
+			)
 			.await
+			.and_then(|row| row.try_get("id"))
 			.into_diagnostic()
-			.wrap_err("storing to db")?
-			.try_get("id")
-			.into_diagnostic()
-			.wrap_err("getting stored id")
+			.wrap_err("db: create sprint")
 	}
 
 	pub async fn from_current(app: App, uuid: Uuid) -> Result<Self> {
-		sqlx::query_as("SELECT * FROM sprints_current WHERE id = $1")
-			.bind(uuid)
-			.fetch_one(&app.pool)
+		app.db
+			.query_one("SELECT * FROM sprints_current WHERE id = $1", &[&uuid])
 			.await
 			.into_diagnostic()
+			.and_then(Self::from_row)
+			.wrap_err("db: get current sprint")
 	}
 
 	pub async fn update_status(&self, app: App, status: SprintStatus) -> Result<()> {
-		sqlx::query("UPDATE sprints SET status = $2 WHERE id = $1")
-			.bind(self.id)
-			.bind(status.to_string())
-			.execute(&app.pool)
+		app.db
+			.query(
+				"UPDATE sprints SET status = $2 WHERE id = $1",
+				&[&self.id, &status],
+			)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: update sprint status")
@@ -159,9 +112,11 @@ impl Sprint {
 	}
 
 	pub async fn cancel(&self, app: App) -> Result<()> {
-		sqlx::query("UPDATE sprints SET cancelled_at = CURRENT_TIMESTAMP WHERE id = $1")
-			.bind(self.id)
-			.execute(&app.pool)
+		app.db
+			.query(
+				"UPDATE sprints SET cancelled_at = CURRENT_TIMESTAMP WHERE id = $1",
+				&[&self.id],
+			)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: cancel sprint")
@@ -178,11 +133,11 @@ impl Sprint {
 		// schema or we're 10k years in the future) reach even 60 bits of length
 		// so we're quite safe casting them to i64
 
-		sqlx::query("INSERT INTO sprint_participants (sprint_id, member.guild_id, member.user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING")
-			.bind(self.id)
-			.bind(guild_id.get() as i64)
-			.bind(user_id.get() as i64)
-			.execute(&app.pool)
+		app.db
+			.query(
+				"INSERT INTO sprint_participants (sprint_id, member.guild_id, member.user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
+				&[&self.id, &(guild_id.get() as i64), &(user_id.get() as i64)],
+			)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: join sprint")
@@ -195,19 +150,15 @@ impl Sprint {
 		guild_id: Id<GuildMarker>,
 		user_id: Id<UserMarker>,
 	) -> Result<()> {
-		sqlx::query("DELETE FROM sprint_participants WHERE sprint_id = $1 AND (member).guild_id = $2 AND (member).user_id = $3")
-			.bind(self.id)
-			.bind(guild_id.get() as i64)
-			.bind(user_id.get() as i64)
-			.execute(&app.pool)
+		app.db
+			.query(
+				"DELETE FROM sprint_participants WHERE sprint_id = $1 AND (member).guild_id = $2 AND (member).user_id = $3",
+				&[&self.id, &(guild_id.get() as i64), &(user_id.get() as i64)],
+			)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: leave sprint")
 			.map(drop)
-	}
-
-	pub fn status(&self) -> Result<SprintStatus> {
-		SprintStatus::from_str(&self.status).into_diagnostic()
 	}
 
 	pub fn duration(&self) -> Duration {

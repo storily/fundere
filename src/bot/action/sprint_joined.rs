@@ -1,5 +1,4 @@
 use miette::{IntoDiagnostic, Result};
-use sqlx::types::Uuid;
 use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::{
@@ -11,6 +10,7 @@ use twilight_model::{
 	id::{marker::InteractionMarker, Id},
 };
 use twilight_util::builder::InteractionResponseDataBuilder;
+use uuid::Uuid;
 
 use crate::{bot::utils::action_row, db::sprint::Sprint};
 

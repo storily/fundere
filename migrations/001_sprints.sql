@@ -1,22 +1,9 @@
-CREATE TYPE channel_t AS (
-	guild_id int8,
-	channel_id int8
-);
-
-CREATE DOMAIN channel AS channel_t
-CHECK (
-	(VALUE).guild_id IS NOT NULL AND
-	(VALUE).channel_id IS NOT NULL
-);
-
-CREATE TYPE member_t AS (
-	guild_id int8,
-	user_id int8
-);
-
-CREATE DOMAIN member AS member_t CHECK (
-	(VALUE).guild_id IS NOT NULL AND
-	(VALUE).user_id IS NOT NULL
+CREATE TYPE sprint_status AS ENUM (
+	'Initial',
+	'Announced',
+	'Started',
+	'Ended',
+	'Summaried'
 );
 
 CREATE TABLE sprints (
@@ -30,7 +17,7 @@ CREATE TABLE sprints (
 	starting_at timestamp with time zone not null,
 	duration interval not null,
 
-	status text not null default 'initial',
+	status sprint_status not null default 'Initial',
 	channels channel[] not null default '{}',
 
 	unique (shortid)

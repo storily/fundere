@@ -5,7 +5,6 @@ use std::{
 };
 
 use miette::{miette, IntoDiagnostic, Result};
-use sqlx::PgPool;
 use tokio::{
 	sync::mpsc::Sender,
 	time::{sleep_until, Instant as TokioInstant, Sleep},
@@ -24,7 +23,6 @@ pub struct App(Arc<AppContext>);
 pub struct AppContext {
 	pub config: Config,
 	pub db: PgClient,
-	pub pool: PgPool,
 	pub client: Client,
 	pub control: Sender<Action>,
 	pub timer: Sender<Timer>,
@@ -34,7 +32,6 @@ impl App {
 	pub fn new(
 		config: Config,
 		db: PgClient,
-		pool: PgPool,
 		client: Client,
 		control: Sender<Action>,
 		timer: Sender<Timer>,
@@ -42,7 +39,6 @@ impl App {
 		Self(Arc::new(AppContext {
 			config,
 			db,
-			pool,
 			client,
 			control,
 			timer,

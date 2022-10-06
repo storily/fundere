@@ -1,6 +1,5 @@
 use futures_util::{FutureExt, StreamExt};
 use miette::{Context, IntoDiagnostic, Result};
-use sqlx::postgres::PgPoolOptions;
 use tokio::{
 	sync::mpsc::{self, Receiver},
 	task::{spawn, JoinSet},
@@ -26,18 +25,12 @@ mod sprint;
 mod utils;
 
 pub async fn start(config: Config) -> Result<()> {
-	let pool = PgPoolOptions::new()
-		.max_connections(5)
-		.connect(config.db.url.as_deref().unwrap_or("foo"))
-		.await
-		.into_diagnostic()?;
-
 	let (db, db_task) = config.db.connect().await?;
 
 	let client = Client::new(config.discord.token.clone());
 	let (control, actions) = mpsc::channel(config.internal.control_buffer);
 	let (timer, timings) = mpsc::channel(config.internal.timer_buffer);
-	let app = App::new(config, db, pool, client, control, timer);
+	let app = App::new(config, db, client, control, timer);
 
 	let querying = spawn(async { db_task.await.into_diagnostic() });
 	let ticking = spawn(ticker(app.clone(), timings));

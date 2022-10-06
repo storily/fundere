@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use chrono::{Duration, Utc};
 use miette::{miette, Context, IntoDiagnostic, Result};
-use sqlx::types::Uuid;
 use tracing::{debug, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
@@ -15,6 +14,7 @@ use twilight_model::application::{
 use twilight_util::builder::command::{
 	CommandBuilder, IntegerBuilder, StringBuilder, SubCommandBuilder,
 };
+use uuid::Uuid;
 
 use crate::{
 	bot::{
@@ -171,7 +171,7 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 		.and_then(|m| m.user.as_ref())
 		.ok_or(miette!("can only join sprint from a guild"))?;
 
-	if sprint.status()? >= SprintStatus::Ended {
+	if sprint.status >= SprintStatus::Ended {
 		return Err(miette!("sprint has already ended"));
 	}
 
@@ -198,7 +198,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 		.and_then(|m| m.user.as_ref())
 		.ok_or(miette!("can only leave sprint from a guild"))?;
 
-	if sprint.status()? >= SprintStatus::Ended {
+	if sprint.status >= SprintStatus::Ended {
 		return Err(miette!("sprint has already ended"));
 	}
 
@@ -222,7 +222,7 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 		.and_then(|m| m.user.as_ref())
 		.ok_or(miette!("can only cancel sprint from a guild"))?;
 
-	if sprint.status()? >= SprintStatus::Ended {
+	if sprint.status >= SprintStatus::Ended {
 		return Err(miette!("sprint has already ended"));
 	}
 

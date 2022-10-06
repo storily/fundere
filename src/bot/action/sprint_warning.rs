@@ -1,6 +1,5 @@
 use humantime::format_duration;
 use miette::{miette, IntoDiagnostic, Result};
-use sqlx::types::Uuid;
 use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::{
@@ -9,6 +8,7 @@ use twilight_model::{
 	},
 	id::{marker::InteractionMarker, Id},
 };
+use uuid::Uuid;
 
 use crate::{
 	bot::{utils::action_row, App},
@@ -36,7 +36,7 @@ impl SprintWarning {
 
 	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
 		let sprint = Sprint::from_current(app.clone(), self.sprint).await?;
-		if sprint.status()? >= SprintStatus::Started {
+		if sprint.status >= SprintStatus::Started {
 			return Err(miette!(
 				"Bug: went to warn sprint but it was already started"
 			));
