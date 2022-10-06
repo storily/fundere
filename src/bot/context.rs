@@ -10,6 +10,7 @@ use tokio::{
 	sync::mpsc::Sender,
 	time::{sleep_until, Instant as TokioInstant, Sleep},
 };
+use tokio_postgres::Client as PgClient;
 use twilight_http::Client;
 
 use super::action::Action;
@@ -22,7 +23,8 @@ pub struct App(Arc<AppContext>);
 #[derive(Debug)]
 pub struct AppContext {
 	pub config: Config,
-	pub db: PgPool,
+	pub db: PgClient,
+	pub pool: PgPool,
 	pub client: Client,
 	pub control: Sender<Action>,
 	pub timer: Sender<Timer>,
@@ -31,7 +33,8 @@ pub struct AppContext {
 impl App {
 	pub fn new(
 		config: Config,
-		db: PgPool,
+		db: PgClient,
+		pool: PgPool,
 		client: Client,
 		control: Sender<Action>,
 		timer: Sender<Timer>,
@@ -39,6 +42,7 @@ impl App {
 		Self(Arc::new(AppContext {
 			config,
 			db,
+			pool,
 			client,
 			control,
 			timer,

@@ -9,7 +9,42 @@ discord token="<TOKEN HERE>" app-id=123 {
 	}
 }
 
-/-db url="postgres://user:password@host/database" {}
+db {
+	// parameters set via the url act as a base, all others add upon the config.
+	// the url is optional, but if not provided, the host and user are required.
+	url "postgres://user@host/database"
+
+	user "username"
+	name "database" // defaults to the value of `user`
+
+	// host and port can be specified multiple times, each pair specifying one
+	// target to try to connect to in order
+	host "hostname"
+	port 5432
+	// alternatively, a single port can be specified for all hosts, or no port
+	// at all, which will use the default for all hosts.
+
+	// sets the application_name parameter on the server. recommended.
+	application_name "fundere"
+
+	// require attributes of the target server (any, read-write)
+	target-session-attrs "any"
+
+	// ssl mode (prefer, required, disabled)
+	ssl-mode "prefer"
+
+	// use channel binding during auth (prefer, required, disabled)
+	channel-binding "prefer"
+
+	// connect timeout in seconds (defaults to none)
+	connect-timeout 60
+
+	// enable keepalives (at TCP level)
+	keepalives true
+
+	// time (seconds) a TCP socket must be idle for before a keepalive is sent
+	keepalives-idle 7200
+}
 
 // reference for internal settings, values are defaults
 /-internal {

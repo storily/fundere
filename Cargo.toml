@@ -26,6 +26,7 @@ miette = { version = "4.7.1", features = ["fancy"] }
 sqlx = { version = "0.5.10", features = ["runtime-tokio-rustls", "postgres", "macros", "migrate", "uuid", "time", "json", "chrono"] }
 strum = { version = "0.24.1", features = ["derive"] }
 tokio = { version = "1.21.1", features = ["full"] }
+tokio-postgres = { version = "0.7.7", features = ["array-impls", "with-chrono-0_4", "with-uuid-1"] }
 tracing = "0.1.36"
 tracing-subscriber = "0.3.15"
 twilight-cache-inmemory = { version = "0.13.0", features = ["permission-calculator"] }

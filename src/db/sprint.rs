@@ -5,7 +5,7 @@ use miette::{Context, IntoDiagnostic, Result};
 use sqlx::{
 	postgres::{types::PgInterval, PgHasArrayType, PgTypeInfo},
 	types::Uuid,
-	Row, Type, Postgres, TypeInfo,
+	Postgres, Row, Type, TypeInfo,
 };
 use strum::{Display, EnumString};
 use twilight_mention::{fmt::MentionFormat, Mention};
@@ -37,9 +37,9 @@ pub struct Member {
 }
 
 impl Type<Postgres> for Member {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("member_t")
-    }
+	fn type_info() -> PgTypeInfo {
+		PgTypeInfo::with_name("member_t")
+	}
 
 	fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
 		ty.name() == "member" || ty.name() == "member_t"
@@ -86,9 +86,9 @@ pub struct Participant {
 }
 
 impl Type<Postgres> for Participant {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_name("participant")
-    }
+	fn type_info() -> PgTypeInfo {
+		PgTypeInfo::with_name("participant")
+	}
 
 	fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
 		ty.name() == "participant"
@@ -130,7 +130,7 @@ impl Sprint {
 		sqlx::query("INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING id")
 			.bind(starting_at)
 			.bind(duration)
-			.fetch_one(&app.db)
+			.fetch_one(&app.pool)
 			.await
 			.into_diagnostic()
 			.wrap_err("storing to db")?
@@ -142,7 +142,7 @@ impl Sprint {
 	pub async fn from_current(app: App, uuid: Uuid) -> Result<Self> {
 		sqlx::query_as("SELECT * FROM sprints_current WHERE id = $1")
 			.bind(uuid)
-			.fetch_one(&app.db)
+			.fetch_one(&app.pool)
 			.await
 			.into_diagnostic()
 	}
@@ -151,7 +151,7 @@ impl Sprint {
 		sqlx::query("UPDATE sprints SET status = $2 WHERE id = $1")
 			.bind(self.id)
 			.bind(status.to_string())
-			.execute(&app.db)
+			.execute(&app.pool)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: update sprint status")
@@ -161,7 +161,7 @@ impl Sprint {
 	pub async fn cancel(&self, app: App) -> Result<()> {
 		sqlx::query("UPDATE sprints SET cancelled_at = CURRENT_TIMESTAMP WHERE id = $1")
 			.bind(self.id)
-			.execute(&app.db)
+			.execute(&app.pool)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: cancel sprint")
@@ -182,7 +182,7 @@ impl Sprint {
 			.bind(self.id)
 			.bind(guild_id.get() as i64)
 			.bind(user_id.get() as i64)
-			.execute(&app.db)
+			.execute(&app.pool)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: join sprint")
@@ -199,7 +199,7 @@ impl Sprint {
 			.bind(self.id)
 			.bind(guild_id.get() as i64)
 			.bind(user_id.get() as i64)
-			.execute(&app.db)
+			.execute(&app.pool)
 			.await
 			.into_diagnostic()
 			.wrap_err("db: leave sprint")

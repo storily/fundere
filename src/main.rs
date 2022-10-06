@@ -48,7 +48,7 @@ enum Command {
 async fn sqlx(config: config::Config, args: Vec<OsString>) -> Result<()> {
 	let mut proc = tokio::process::Command::new("sqlx")
 		.args(args)
-		.env("DATABASE_URL", config.db.url)
+		.env("DATABASE_URL", config.db.url.as_deref().unwrap_or("foo"))
 		.spawn()
 		.into_diagnostic()?;
 	proc.wait().await.into_diagnostic()?;

@@ -1,7 +1,12 @@
-use std::path::Path;
+use std::{path::Path, str::FromStr, time::Duration};
 
 use miette::{IntoDiagnostic, Result};
 use tokio::fs;
+use tokio_postgres::{
+	config::{ChannelBinding, Config as PgConfig, SslMode, TargetSessionAttrs},
+	tls::NoTlsStream,
+	Client, Connection, NoTls, Socket,
+};
 use twilight_gateway::Intents as TwItents;
 
 #[derive(Debug, Clone, knuffel::Decode)]
@@ -105,16 +110,146 @@ impl From<Intents> for TwItents {
 	}
 }
 
-#[derive(Debug, Clone, knuffel::Decode)]
+#[derive(Debug, Clone, Default, knuffel::Decode)]
 pub struct DbConfig {
-	#[knuffel(property, default = "postgres://localhost/fundere".to_string())]
-	pub url: String,
+	#[knuffel(child, unwrap(argument))]
+	pub url: Option<String>,
+
+	#[knuffel(child, unwrap(argument))]
+	pub user: Option<String>,
+
+	#[knuffel(child, unwrap(argument))]
+	pub password: Option<String>,
+
+	#[knuffel(child, unwrap(argument))]
+	pub options: Option<String>,
+
+	#[knuffel(child, unwrap(argument))]
+	pub application_name: Option<String>,
+
+	#[knuffel(child, default)]
+	pub ssl_mode: ConfigSslMode,
+
+	#[knuffel(children(name = "host"), unwrap(argument))]
+	pub hosts: Vec<String>,
+
+	#[knuffel(children(name = "port"), unwrap(argument))]
+	pub ports: Vec<u16>,
+
+	#[knuffel(child, unwrap(argument))]
+	pub connect_timeout: Option<u16>,
+
+	#[knuffel(child, unwrap(argument))]
+	pub keepalives: Option<bool>,
+
+	#[knuffel(child, unwrap(argument))]
+	pub keepalives_idle: Option<u64>,
+
+	#[knuffel(child, default)]
+	pub target_session_attrs: ConfigTargetSessionAttrs,
+
+	#[knuffel(child, default)]
+	pub channel_binding: ConfigChannelBinding,
 }
 
-impl Default for DbConfig {
-	fn default() -> Self {
-		Self {
-			url: "postgres://localhost/fundere".to_string(),
+impl DbConfig {
+	pub async fn connect(&self) -> Result<(Client, Connection<Socket, NoTlsStream>)> {
+		let mut config = if let Some(url) = &self.url {
+			PgConfig::from_str(&url).into_diagnostic()?
+		} else {
+			PgConfig::new()
+		};
+
+		for host in &self.hosts {
+			config.host(host);
+		}
+
+		for port in &self.ports {
+			config.port(*port);
+		}
+
+		if let Some(v) = &self.user {
+			config.user(v);
+		}
+		if let Some(v) = &self.password {
+			config.password(v);
+		}
+		if let Some(v) = &self.options {
+			config.options(v);
+		}
+		if let Some(v) = &self.application_name {
+			config.application_name(v);
+		}
+
+		if let Some(v) = self.keepalives {
+			config.keepalives(v);
+		}
+		if let Some(v) = self.keepalives_idle {
+			config.keepalives_idle(Duration::from_secs(v));
+		}
+		if let Some(v) = self.connect_timeout {
+			config.connect_timeout(Duration::from_secs(v as _));
+		}
+
+		config.ssl_mode(self.ssl_mode.into());
+		config.target_session_attrs(self.target_session_attrs.into());
+		config.channel_binding(self.channel_binding.into());
+
+		config.connect(NoTls).await.into_diagnostic()
+	}
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, knuffel::Decode)]
+#[non_exhaustive]
+pub enum ConfigSslMode {
+	Disable,
+	#[default]
+	Prefer,
+	Require,
+}
+
+impl From<ConfigSslMode> for SslMode {
+	fn from(c: ConfigSslMode) -> Self {
+		match c {
+			ConfigSslMode::Disable => Self::Disable,
+			ConfigSslMode::Prefer => Self::Prefer,
+			ConfigSslMode::Require => Self::Require,
+		}
+	}
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, knuffel::Decode)]
+#[non_exhaustive]
+pub enum ConfigTargetSessionAttrs {
+	#[default]
+	Any,
+	ReadWrite,
+}
+
+impl From<ConfigTargetSessionAttrs> for TargetSessionAttrs {
+	fn from(c: ConfigTargetSessionAttrs) -> Self {
+		match c {
+			ConfigTargetSessionAttrs::Any => Self::Any,
+			ConfigTargetSessionAttrs::ReadWrite => Self::ReadWrite,
+		}
+	}
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, knuffel::Decode)]
+#[non_exhaustive]
+pub enum ConfigChannelBinding {
+	Disable,
+	#[default]
+	Prefer,
+	Require,
+}
+
+impl From<ConfigChannelBinding> for ChannelBinding {
+	fn from(c: ConfigChannelBinding) -> Self {
+		match c {
+			ConfigChannelBinding::Disable => Self::Disable,
+			ConfigChannelBinding::Prefer => Self::Prefer,
+			ConfigChannelBinding::Require => Self::Require,
 		}
 	}
 }
