@@ -39,9 +39,7 @@ CREATE TABLE sprint_participants (
 );
 
 CREATE VIEW sprints_current AS
-	SELECT
-		sprints.*,
-		array_remove(array_agg(sprint_participants.*), NULL) AS participants
+	SELECT sprints.*
 	FROM sprints
 	LEFT JOIN sprint_participants ON sprints.id = sprint_participants.sprint_id
 	WHERE true
@@ -50,4 +48,5 @@ CREATE VIEW sprints_current AS
 			sprints.starting_at >= current_timestamp
 			OR sprints.starting_at + sprints.duration >= current_timestamp
 		)
-	GROUP BY sprints.id;
+	GROUP BY sprints.id
+	HAVING count(sprint_participants.*) > 0;

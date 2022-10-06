@@ -24,7 +24,10 @@ use crate::{
 			time::parse_when_relative_to,
 		},
 	},
-	db::sprint::{Sprint, SprintStatus},
+	db::{
+		sprint::{Sprint, SprintStatus},
+		types::Member,
+	},
 };
 
 use super::{action::SprintLeft, App};
@@ -129,22 +132,10 @@ async fn sprint_start(
 		now_with_time
 	};
 
-	let guild_id = interaction
-		.guild_id
-		.ok_or(miette!("can only join sprint from a guild"))?;
-	let user = interaction
-		.member
-		.as_ref()
-		.and_then(|m| m.user.as_ref())
-		.ok_or(miette!("can only join sprint from a guild"))?;
+	let member = Member::try_from(interaction)?;
 
-	debug!(%starting, %duration, "recording sprint");
-	let id = Sprint::create(app.clone(), starting, duration).await?;
-	let sprint = Sprint::from_current(app.clone(), id)
-		.await
-		.wrap_err("BUG: new sprint isn't current!")?;
-	debug!("joining own sprint");
-	sprint.join(app.clone(), guild_id, user.id).await?;
+	debug!(%starting, %duration, ?member, "recording sprint");
+	let sprint = Sprint::create(app.clone(), starting, duration, member).await?;
 
 	app.send_action(
 		SprintAnnounce::new(app.clone(), &interaction, sprint)
@@ -158,24 +149,16 @@ async fn sprint_start(
 
 async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let member = Member::try_from(interaction)?;
 	let sprint = Sprint::from_current(app.clone(), uuid)
 		.await
 		.wrap_err("that sprint isn't current")?;
-
-	let guild_id = interaction
-		.guild_id
-		.ok_or(miette!("can only join sprint from a guild"))?;
-	let user = interaction
-		.member
-		.as_ref()
-		.and_then(|m| m.user.as_ref())
-		.ok_or(miette!("can only join sprint from a guild"))?;
 
 	if sprint.status >= SprintStatus::Ended {
 		return Err(miette!("sprint has already ended"));
 	}
 
-	sprint.join(app.clone(), guild_id, user.id).await?;
+	sprint.join(app.clone(), member).await?;
 
 	app.send_action(SprintJoined::new(&interaction, sprint))
 		.await?;
@@ -185,24 +168,16 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 
 async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let member = Member::try_from(interaction)?;
 	let sprint = Sprint::from_current(app.clone(), uuid)
 		.await
 		.wrap_err("that sprint isn't current")?;
-
-	let guild_id = interaction
-		.guild_id
-		.ok_or(miette!("can only leave sprint from a guild"))?;
-	let user = interaction
-		.member
-		.as_ref()
-		.and_then(|m| m.user.as_ref())
-		.ok_or(miette!("can only leave sprint from a guild"))?;
 
 	if sprint.status >= SprintStatus::Ended {
 		return Err(miette!("sprint has already ended"));
 	}
 
-	sprint.leave(app.clone(), guild_id, user.id).await?;
+	sprint.leave(app.clone(), member).await?;
 
 	app.send_action(SprintLeft::new(&interaction, sprint))
 		.await?;

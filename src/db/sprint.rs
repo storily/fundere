@@ -6,10 +6,7 @@ use pg_interval::Interval;
 use postgres_types::{FromSql, ToSql};
 use tokio_postgres::Row;
 use twilight_mention::{fmt::MentionFormat, Mention};
-use twilight_model::id::{
-	marker::{GuildMarker, UserMarker},
-	Id,
-};
+use twilight_model::id::{marker::UserMarker, Id};
 use uuid::Uuid;
 
 use crate::bot::App;
@@ -17,6 +14,7 @@ use crate::bot::App;
 use super::types::Member;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ToSql, FromSql)]
+#[postgres(name = "sprint_status")]
 pub enum SprintStatus {
 	Initial,
 	Announced,
@@ -25,7 +23,7 @@ pub enum SprintStatus {
 	Summaried,
 }
 
-#[derive(Debug, Clone, ToSql, FromSql)]
+#[derive(Debug, Clone)]
 pub struct Participant {
 	pub sprint_id: Uuid,
 	pub member: Member,
@@ -40,6 +38,18 @@ impl Mention<Id<UserMarker>> for Participant {
 	}
 }
 
+impl Participant {
+	fn from_row(row: Row) -> Result<Self> {
+		Ok(Self {
+			sprint_id: row.try_get("sprint_id").into_diagnostic()?,
+			member: row.try_get("member").into_diagnostic()?,
+			joined_at: row.try_get("joined_at").into_diagnostic()?,
+			words_start: row.try_get("words_start").into_diagnostic()?,
+			words_end: row.try_get("words_end").into_diagnostic()?,
+		})
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct Sprint {
 	pub id: Uuid,
@@ -47,7 +57,6 @@ pub struct Sprint {
 	pub starting_at: DateTime<Utc>,
 	pub duration: Interval,
 	pub status: SprintStatus,
-	pub participants: Vec<Participant>,
 }
 
 impl Sprint {
@@ -58,26 +67,23 @@ impl Sprint {
 			starting_at: row.try_get("starting_at").into_diagnostic()?,
 			duration: row.try_get("duration").into_diagnostic()?,
 			status: row.try_get("status").into_diagnostic()?,
-			participants: match row.try_get("participants") {
-				Ok(p) => p,
-				Err(e) => match e {
-					_ => todo!(),
-				},
-			},
 		})
 	}
 
+	#[tracing::instrument(skip(app))]
 	pub async fn create<TZ>(
 		app: App,
 		starting_at: DateTime<TZ>,
 		duration: chrono::Duration,
-	) -> Result<Uuid>
+		member: Member,
+	) -> Result<Self>
 	where
 		TZ: TimeZone,
 	{
-		app.db
+		let sprint = app
+			.db
 			.query_one(
-				"INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING id",
+				"INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING *",
 				&[
 					&starting_at.with_timezone(&Utc),
 					&Interval::from_duration(duration)
@@ -85,11 +91,15 @@ impl Sprint {
 				],
 			)
 			.await
-			.and_then(|row| row.try_get("id"))
 			.into_diagnostic()
-			.wrap_err("db: create sprint")
+			.and_then(Self::from_row)
+			.wrap_err("db: create sprint")?;
+
+		sprint.join(app, member).await?;
+		Ok(sprint)
 	}
 
+	#[tracing::instrument(skip(app))]
 	pub async fn from_current(app: App, uuid: Uuid) -> Result<Self> {
 		app.db
 			.query_one("SELECT * FROM sprints_current WHERE id = $1", &[&uuid])
@@ -99,6 +109,20 @@ impl Sprint {
 			.wrap_err("db: get current sprint")
 	}
 
+	#[tracing::instrument(skip(app))]
+	pub async fn participants(&self, app: App) -> Result<Vec<Participant>> {
+		app.db
+			.query(
+				"SELECT * FROM sprint_participants WHERE sprint_id = $1",
+				&[&self.id],
+			)
+			.await
+			.into_diagnostic()
+			.and_then(|rows| rows.into_iter().map(Participant::from_row).collect())
+			.wrap_err("db: get sprint participants")
+	}
+
+	#[tracing::instrument(skip(app))]
 	pub async fn update_status(&self, app: App, status: SprintStatus) -> Result<()> {
 		app.db
 			.query(
@@ -111,6 +135,7 @@ impl Sprint {
 			.map(drop)
 	}
 
+	#[tracing::instrument(skip(app))]
 	pub async fn cancel(&self, app: App) -> Result<()> {
 		app.db
 			.query(
@@ -123,20 +148,12 @@ impl Sprint {
 			.map(drop)
 	}
 
-	pub async fn join(
-		&self,
-		app: App,
-		guild_id: Id<GuildMarker>,
-		user_id: Id<UserMarker>,
-	) -> Result<()> {
-		// Discord snowflake IDs will never (read: unless they either change the
-		// schema or we're 10k years in the future) reach even 60 bits of length
-		// so we're quite safe casting them to i64
-
+	#[tracing::instrument(skip(app))]
+	pub async fn join(&self, app: App, member: Member) -> Result<()> {
 		app.db
 			.query(
-				"INSERT INTO sprint_participants (sprint_id, member.guild_id, member.user_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
-				&[&self.id, &(guild_id.get() as i64), &(user_id.get() as i64)],
+				"INSERT INTO sprint_participants (sprint_id, member) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+				&[&self.id, &member],
 			)
 			.await
 			.into_diagnostic()
@@ -144,16 +161,12 @@ impl Sprint {
 			.map(drop)
 	}
 
-	pub async fn leave(
-		&self,
-		app: App,
-		guild_id: Id<GuildMarker>,
-		user_id: Id<UserMarker>,
-	) -> Result<()> {
+	#[tracing::instrument(skip(app))]
+	pub async fn leave(&self, app: App, member: Member) -> Result<()> {
 		app.db
 			.query(
-				"DELETE FROM sprint_participants WHERE sprint_id = $1 AND (member).guild_id = $2 AND (member).user_id = $3",
-				&[&self.id, &(guild_id.get() as i64), &(user_id.get() as i64)],
+				"DELETE FROM sprint_participants WHERE sprint_id = $1 AND member = $2",
+				&[&self.id, &member],
 			)
 			.await
 			.into_diagnostic()

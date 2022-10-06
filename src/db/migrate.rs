@@ -13,12 +13,14 @@ macro_rules! migration {
 
 const MIGRATIONS: &[(&str, &str)] = &[migration!("000_base"), migration!("001_sprints")];
 
+#[tracing::instrument(skip(db))]
 pub async fn drop(db: &Client) -> Result<()> {
 	db.batch_execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
 		.await
 		.into_diagnostic()
 }
 
+#[tracing::instrument(skip(db))]
 pub async fn migrate(db: &mut Client) -> Result<()> {
 	let first_todo = if let Some(last) = last_migration(db).await {
 		MIGRATIONS
@@ -42,6 +44,7 @@ pub async fn migrate(db: &mut Client) -> Result<()> {
 	Ok(())
 }
 
+#[tracing::instrument(skip(db))]
 async fn last_migration(db: &Client) -> Option<String> {
 	db.query_one("SELECT name FROM migrations ORDER BY n DESC LIMIT 1", &[])
 		.await
@@ -49,6 +52,7 @@ async fn last_migration(db: &Client) -> Option<String> {
 		.ok()
 }
 
+#[tracing::instrument(skip(db))]
 async fn apply_migration(db: &mut Client, name: &str, query: &str) -> Result<()> {
 	let txn = db.transaction().await.into_diagnostic()?;
 	txn.batch_execute(query).await.into_diagnostic()?;

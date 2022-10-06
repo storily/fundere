@@ -45,7 +45,8 @@ impl SprintStart {
 		let Sprint { id, shortid, .. } = sprint;
 		let duration = format_duration(sprint.duration());
 		let participants = sprint
-			.participants
+			.participants(app.clone())
+			.await?
 			.iter()
 			.map(|p| p.mention().to_string())
 			.join(", ");
