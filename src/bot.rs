@@ -80,7 +80,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 			SprintWarning(data) => data.handle(app.clone(), &interaction_client).await,
 		}
 		.wrap_err(action_dbg)
-		.unwrap_or_else(|err| error!("{err}"));
+		.unwrap_or_else(|err| error!("{err:?}"));
 	}
 
 	Ok(())

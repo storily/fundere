@@ -5,7 +5,7 @@ use miette::{Context, IntoDiagnostic, Result};
 use sqlx::{
 	postgres::{types::PgInterval, PgHasArrayType, PgTypeInfo},
 	types::Uuid,
-	Row,
+	Row, Type, Postgres, TypeInfo,
 };
 use strum::{Display, EnumString};
 use twilight_mention::{fmt::MentionFormat, Mention};
@@ -30,11 +30,20 @@ pub enum SprintStatus {
 	Summaried,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow, sqlx::Type)]
-#[sqlx(type_name = "member")]
+#[derive(Debug, Clone, sqlx::Encode, sqlx::Decode)]
 pub struct Member {
 	pub guild_id: i64,
 	pub user_id: i64,
+}
+
+impl Type<Postgres> for Member {
+    fn type_info() -> PgTypeInfo {
+        PgTypeInfo::with_name("member_t")
+    }
+
+	fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
+		ty.name() == "member" || ty.name() == "member_t"
+	}
 }
 
 impl Member {
@@ -67,14 +76,23 @@ impl Mention<Id<UserMarker>> for Member {
 	}
 }
 
-#[derive(Debug, Clone, sqlx::FromRow, sqlx::Type)]
-#[sqlx(type_name = "sprint_participants")]
+#[derive(Debug, Clone, sqlx::FromRow, sqlx::Encode, sqlx::Decode)]
 pub struct Participant {
 	pub sprint_id: Uuid,
 	pub member: Member,
 	pub joined_at: DateTime<Utc>,
 	pub words_start: Option<i32>,
 	pub words_end: Option<i32>,
+}
+
+impl Type<Postgres> for Participant {
+    fn type_info() -> PgTypeInfo {
+        PgTypeInfo::with_name("participant")
+    }
+
+	fn compatible(ty: &<Postgres as sqlx::Database>::TypeInfo) -> bool {
+		ty.name() == "participant"
+	}
 }
 
 impl Mention<Id<UserMarker>> for Participant {
