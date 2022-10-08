@@ -22,6 +22,7 @@ struct MemberInner {
 }
 
 #[derive(Debug, Clone, ToSql, FromSql)]
+#[postgres(name = "member")]
 pub struct Member(MemberInner);
 
 impl Member {

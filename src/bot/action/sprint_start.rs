@@ -44,13 +44,14 @@ impl SprintStart {
 
 		let Sprint { id, shortid, .. } = sprint;
 		let duration = format_duration(sprint.duration());
-		let participants = sprint
-			.participants(app.clone())
-			.await?
+
+		let participants = sprint.participants(app.clone()).await?;
+		let participant_list = participants
 			.iter()
 			.map(|p| p.mention().to_string())
 			.join(", ");
-		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}!\nWith {} participants: {participants}", participants.len());
+
+		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}!\nWith {} participants: {participant_list}", participants.len());
 		// TODO: ding
 		// TODO: schedule end
 
