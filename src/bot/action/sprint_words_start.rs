@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 use crate::{
 	bot::utils::action_row,
-	db::sprint::{Sprint, SprintStatus},
+	db::{
+		sprint::{Sprint, SprintStatus},
+		types::Member,
+	},
 };
 
 use super::{Action, ActionClass, Args};
@@ -22,15 +25,17 @@ pub struct SprintWordsStart {
 	pub id: Id<InteractionMarker>,
 	pub token: String,
 	pub sprint: Uuid,
+	pub member: Member,
 }
 
 impl SprintWordsStart {
 	#[tracing::instrument(name = "SprintWordsStart", skip(interaction))]
-	pub fn new(interaction: &Interaction, sprint: Uuid) -> Action {
+	pub fn new(interaction: &Interaction, sprint: Uuid, member: Member) -> Action {
 		ActionClass::SprintWordsStart(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint,
+			member,
 		})
 		.into()
 	}
@@ -54,6 +59,7 @@ impl SprintWordsStart {
 		}
 
 		let Sprint { id, shortid, .. } = sprint;
+		let participant = sprint.participant(app.clone(), self.member).await?;
 
 		interaction_client
 			.create_response(
@@ -73,7 +79,7 @@ impl SprintWordsStart {
 								placeholder: None,
 								required: Some(true),
 								style: TextInputStyle::Short,
-								value: Some("0".into()),
+								value: Some(participant.words_start.unwrap_or(0).to_string()),
 							})]))
 							.build(),
 					),

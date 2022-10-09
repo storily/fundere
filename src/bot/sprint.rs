@@ -262,6 +262,7 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 
 async fn sprint_words_start(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let member = Member::try_from(interaction)?;
 	let sprint = Sprint::get(app.clone(), uuid)
 		.await
 		.wrap_err("sprint not found")?;
@@ -273,7 +274,7 @@ async fn sprint_words_start(app: App, interaction: &Interaction, uuid: &str) -> 
 		return Err(miette!("sprint has already been finalised"));
 	}
 
-	app.send_action(SprintWordsStart::new(&interaction, sprint.id))
+	app.send_action(SprintWordsStart::new(&interaction, sprint.id, member))
 		.await?;
 
 	Ok(())

@@ -59,7 +59,6 @@ impl SprintWordsEnd {
 		}
 
 		let Sprint { id, shortid, .. } = sprint;
-
 		let participant = sprint.participant(app.clone(), self.member).await?;
 
 		interaction_client
@@ -80,7 +79,13 @@ impl SprintWordsEnd {
 								placeholder: None,
 								required: Some(true),
 								style: TextInputStyle::Short,
-								value: Some(participant.words_start.unwrap_or(0).to_string()),
+								value: Some(
+									participant
+										.words_end
+										.or(participant.words_start)
+										.unwrap_or(0)
+										.to_string(),
+								),
 							})]))
 							.build(),
 					),
