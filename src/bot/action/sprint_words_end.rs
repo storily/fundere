@@ -12,10 +12,7 @@ use uuid::Uuid;
 
 use crate::{
 	bot::utils::action_row,
-	db::{
-		sprint::{Sprint, SprintStatus},
-		types::Member,
-	},
+	db::{sprint::Sprint, types::Member},
 };
 
 use super::{Action, ActionClass, Args};
@@ -51,11 +48,6 @@ impl SprintWordsEnd {
 		let sprint = Sprint::get(app.clone(), self.sprint).await?;
 		if sprint.is_cancelled() {
 			return Err(miette!("Can't set ending words on a cancelled sprint."));
-		}
-		if sprint.status >= SprintStatus::Summaried {
-			return Err(miette!(
-				"Can't set ending words on a sprint that's already been finalised."
-			));
 		}
 
 		let Sprint { id, shortid, .. } = sprint;

@@ -151,6 +151,21 @@ impl Sprint {
 	}
 
 	#[tracing::instrument(skip(app))]
+	pub async fn all_participants_have_ending_words(&self, app: App) -> Result<bool> {
+		let unfinished: i64 = app.db
+			.query_one(
+				"SELECT count(*) AS unfinished FROM sprint_participants WHERE sprint_id = $1 AND words_end IS NULL",
+				&[&self.id],
+			)
+			.await
+			.into_diagnostic()
+			.and_then(|count| count.try_get("unfinished").into_diagnostic())
+			.wrap_err("db: get count of participants without ending words")?;
+
+		Ok(unfinished <= 0)
+	}
+
+	#[tracing::instrument(skip(app))]
 	pub async fn update_status(&self, app: App, status: SprintStatus) -> Result<()> {
 		app.db
 			.query(

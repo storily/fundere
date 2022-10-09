@@ -32,7 +32,7 @@ use crate::{
 };
 
 use super::{
-	action::{CommandAck, SprintLeft, SprintWordsEnd, SprintWordsStart},
+	action::{CommandAck, SprintLeft, SprintSummary, SprintWordsEnd, SprintWordsStart},
 	App,
 };
 
@@ -270,9 +270,6 @@ async fn sprint_words_start(app: App, interaction: &Interaction, uuid: &str) -> 
 	if sprint.is_cancelled() {
 		return Err(miette!("sprint was cancelled"));
 	}
-	if sprint.status >= SprintStatus::Summaried {
-		return Err(miette!("sprint has already been finalised"));
-	}
 
 	app.send_action(SprintWordsStart::new(&interaction, sprint.id, member))
 		.await?;
@@ -289,9 +286,6 @@ async fn sprint_words_end(app: App, interaction: &Interaction, uuid: &str) -> Re
 
 	if sprint.is_cancelled() {
 		return Err(miette!("sprint was cancelled"));
-	}
-	if sprint.status >= SprintStatus::Summaried {
-		return Err(miette!("sprint has already been finalised"));
 	}
 
 	app.send_action(SprintWordsEnd::new(&interaction, sprint.id, member))
@@ -316,9 +310,6 @@ async fn sprint_set_words(
 	if sprint.is_cancelled() {
 		return Err(miette!("sprint was cancelled"));
 	}
-	if sprint.status >= SprintStatus::Summaried {
-		return Err(miette!("sprint has already been finalised"));
-	}
 
 	let words = data
 		.components
@@ -339,7 +330,16 @@ async fn sprint_set_words(
 
 	sprint.set_words(app.clone(), member, words, column).await?;
 
-	app.send_action(CommandAck::new(&interaction)).await?;
+	if column == "words_end"
+		&& sprint
+			.all_participants_have_ending_words(app.clone())
+			.await?
+	{
+		app.send_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
+			.await?;
+	} else {
+		app.send_action(CommandAck::new(&interaction)).await?;
+	}
 
 	Ok(())
 }
