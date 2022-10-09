@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use chrono::{Duration, Utc};
 use miette::{miette, Context, IntoDiagnostic, Result};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
 	interaction::{
@@ -26,8 +26,9 @@ use crate::{
 		},
 	},
 	db::{
+		channel::Channel,
+		member::Member,
 		sprint::{Sprint, SprintStatus},
-		types::Member,
 	},
 };
 
@@ -53,7 +54,7 @@ pub fn command() -> Result<Command> {
 			"duration",
 			"Duration of the sprint in minutes (defaults to 15)",
 		);
-		SubCommandBuilder::new("start", "Create a new sprint")
+		SubCommandBuilder::new("new", "Schedule a new sprint")
 			.option(when)
 			.option(duration)
 	})
@@ -76,9 +77,9 @@ pub async fn on_command(
 	});
 
 	match subcmd {
-		Some(("start", opts)) => sprint_start(app.clone(), interaction, opts)
+		Some(("new", opts)) => sprint_new(app.clone(), interaction, opts)
 			.await
-			.wrap_err("command: start")?,
+			.wrap_err("command: new")?,
 		Some((other, _)) => warn!("unhandled sprint subcommand: {other}"),
 		_ => todo!("handle bare sprint command?"),
 	}
@@ -145,7 +146,46 @@ pub async fn on_modal(
 	Ok(())
 }
 
-async fn sprint_start(
+pub async fn load_from_db(app: App) -> Result<()> {
+	let finished = Sprint::get_all_finished_but_not_summaried(app.clone()).await?;
+	let mut need_summarying = 0;
+	for sprint in finished {
+		if sprint
+			.all_participants_have_ending_words(app.clone())
+			.await?
+		{
+			need_summarying += 1;
+
+			let text = sprint.summary_text(app.clone()).await?;
+			for chan in &sprint.channels {
+				app.client
+					.create_message((*chan).into())
+					.content(&text)
+					.into_diagnostic()?
+					.exec()
+					.await
+					.into_diagnostic()?;
+			}
+			sprint.update_status(app.clone(), SprintStatus::Summaried).await?;
+		}
+	}
+
+	let current = Sprint::get_all_current(app.clone()).await?;
+	// those created but not announced
+	// those before the warn
+	// those after the warn but before the start that haven't been warned
+	// those before the start that have been warned
+	// those after the start that haven't been started
+
+	// + other query/view:
+	// those after the end that haven't been ended
+
+	info!(%need_summarying, "loaded sprints from db");
+
+	Ok(())
+}
+
+async fn sprint_new(
 	app: App,
 	interaction: &Interaction,
 	options: &[CommandDataOption],
@@ -171,10 +211,11 @@ async fn sprint_start(
 		now_with_time
 	};
 
+	let channel = Channel::try_from(interaction)?;
 	let member = Member::try_from(interaction)?;
 
-	debug!(%starting, %duration, ?member, "recording sprint");
-	let sprint = Sprint::create(app.clone(), starting, duration, member).await?;
+	debug!(%starting, %duration, ?channel, ?member, "recording sprint");
+	let sprint = Sprint::create(app.clone(), starting, duration, channel, member).await?;
 
 	app.send_action(
 		SprintAnnounce::new(app.clone(), &interaction, sprint)

@@ -4,7 +4,7 @@ use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::{
 	application::interaction::Interaction,
 	guild::Member as DiscordMember,
-	id::{marker::UserMarker, Id},
+	id::{marker::{UserMarker, GuildMarker}, Id},
 	user::User,
 };
 
@@ -14,14 +14,14 @@ use crate::bot::App;
 // schema or we're 10k years in the future) reach even 60 bits of length
 // so we're quite safe casting them to i64
 
-#[derive(Debug, Clone, ToSql, FromSql)]
+#[derive(Debug, Clone, Copy, ToSql, FromSql)]
 #[postgres(name = "member_t")]
 struct MemberInner {
 	pub guild_id: i64,
 	pub user_id: i64,
 }
 
-#[derive(Debug, Clone, ToSql, FromSql)]
+#[derive(Debug, Clone, Copy, ToSql, FromSql)]
 #[postgres(name = "member")]
 pub struct Member(MemberInner);
 
@@ -53,8 +53,20 @@ impl Member {
 
 impl Mention<Id<UserMarker>> for Member {
 	fn mention(&self) -> MentionFormat<Id<UserMarker>> {
-		Id::new(self.0.user_id as _).mention()
+		Id::<UserMarker>::from(*self).mention()
 	}
+}
+
+impl From<Member> for Id<UserMarker> {
+    fn from(chan: Member) -> Self {
+        Id::new(chan.0.user_id as _)
+    }
+}
+
+impl From<Member> for Id<GuildMarker> {
+    fn from(chan: Member) -> Self {
+        Id::new(chan.0.guild_id as _)
+    }
 }
 
 impl TryFrom<&Interaction> for Member {

@@ -1,5 +1,6 @@
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use humantime::{format_duration, FormattedDuration};
+use itertools::Itertools;
 use miette::{miette, Context, IntoDiagnostic, Result};
 use pg_interval::Interval;
 use postgres_types::{FromSql, ToSql};
@@ -10,7 +11,7 @@ use uuid::Uuid;
 
 use crate::bot::App;
 
-use super::types::Member;
+use super::{member::Member, channel::Channel};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ToSql, FromSql)]
 #[postgres(name = "sprint_status")]
@@ -59,6 +60,7 @@ pub struct Sprint {
 	pub starting_at: DateTime<Utc>,
 	pub duration: Interval,
 	pub status: SprintStatus,
+	pub channels: Vec<Channel>,
 }
 
 impl Sprint {
@@ -72,6 +74,7 @@ impl Sprint {
 			starting_at: row.try_get("starting_at").into_diagnostic()?,
 			duration: row.try_get("duration").into_diagnostic()?,
 			status: row.try_get("status").into_diagnostic()?,
+			channels: row.try_get("channels").into_diagnostic()?,
 		})
 	}
 
@@ -80,19 +83,22 @@ impl Sprint {
 		app: App,
 		starting_at: DateTime<TZ>,
 		duration: Duration,
+		channel: Channel,
 		member: Member,
 	) -> Result<Self>
 	where
 		TZ: TimeZone,
 	{
+		// TODO: store interaction ID
 		let sprint = app
 			.db
 			.query_one(
-				"INSERT INTO sprints (starting_at, duration) VALUES ($1, $2) RETURNING *",
+				"INSERT INTO sprints (starting_at, duration, channels) VALUES ($1, $2, $3) RETURNING *",
 				&[
 					&starting_at.with_timezone(&Utc),
 					&Interval::from_duration(duration)
 						.ok_or(miette!("could not convert duration to interval"))?,
+					&[channel],
 				],
 			)
 			.await
@@ -122,6 +128,26 @@ impl Sprint {
 			.into_diagnostic()
 			.and_then(Self::from_row)
 			.wrap_err("db: get current sprint")
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn get_all_current(app: App) -> Result<Vec<Self>> {
+		app.db
+			.query("SELECT * FROM sprints_current", &[])
+			.await
+			.into_diagnostic()
+			.and_then(|rows| rows.into_iter().map(Self::from_row).collect())
+			.wrap_err("db: get current sprints")
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn get_all_finished_but_not_summaried(app: App) -> Result<Vec<Self>> {
+		app.db
+			.query("SELECT * FROM sprints_finished_but_not_summaried", &[])
+			.await
+			.into_diagnostic()
+			.and_then(|rows| rows.into_iter().map(Self::from_row).collect())
+			.wrap_err("db: get sprints that are finished but not summaried")
 	}
 
 	#[tracing::instrument(skip(app))]
@@ -274,5 +300,39 @@ impl Sprint {
 	pub fn ending_in(&self) -> Duration {
 		let now = Utc::now();
 		self.ending_at() - now
+	}
+
+	pub async fn summary_text(&self, app: App) -> Result<String> {
+		let started_at = self
+			.starting_at
+			.with_timezone(&chrono_tz::Pacific::Auckland)
+			.format("%H:%M:%S");
+
+		let shortid = self.shortid;
+		let duration = self.formatted_duration();
+		let minutes = self.duration().num_minutes();
+
+		let participants = self.participants(app.clone()).await?;
+		let mut summaries = Vec::with_capacity(participants.len());
+		for p in participants {
+			let member = p.member.to_member(app.clone()).await?;
+			let name = member.nick.unwrap_or_else(|| member.user.name);
+			let words = p
+				.words_end
+				.and_then(|end| p.words_start.map(|start| end - start))
+				.unwrap_or(0);
+			let wpm = (words as f64) / (minutes as f64);
+			summaries.push((name, words, wpm));
+		}
+
+		summaries.sort_by_key(|(_, w, _)| *w);
+		let summary = summaries
+			.into_iter()
+			.map(|(name, words, wpm)| {
+				format!("_{name}_: **{words}** words (**{wpm:.1}** words per minute)")
+			})
+			.join("\n");
+
+		Ok(format!("🧮 Sprint `{shortid}`, {duration}, started at {started_at}:\n{summary}"))
 	}
 }

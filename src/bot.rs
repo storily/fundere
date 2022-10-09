@@ -1,5 +1,5 @@
 use futures_util::{FutureExt, StreamExt};
-use miette::{Context, IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic, Result, Report};
 use tokio::{
 	sync::mpsc::{self, Receiver},
 	task::{spawn, JoinSet},
@@ -32,10 +32,22 @@ pub async fn start(config: Config) -> Result<()> {
 	let (timer, timings) = mpsc::channel(config.internal.timer_buffer);
 	let app = App::new(config, db, client, control, timer);
 
-	let querying = spawn(async { db_task.await.into_diagnostic() });
+	let querying = spawn(async {
+		info!("starting db worker");
+		db_task.await.into_diagnostic()
+	});
+
 	let ticking = spawn(ticker(app.clone(), timings));
 	let listening = spawn(listener(app.clone()));
-	let controlling = spawn(controller(app, actions));
+	let controlling = spawn(controller(app.clone(), actions));
+
+	let initing = spawn(async {
+		sprint::load_from_db(app).await?;
+		Ok::<_, Report>(())
+	});
+
+	initing.await.into_diagnostic()??;
+	info!("init has finished, good sailing!");
 
 	controlling.await.into_diagnostic()??;
 	info!("controller has finished, cancelling other tasks");

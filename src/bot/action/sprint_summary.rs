@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use miette::{IntoDiagnostic, Result};
 use twilight_model::{
 	application::interaction::Interaction,
@@ -26,39 +25,6 @@ pub struct SprintSummary {
 impl SprintSummary {
 	#[tracing::instrument(name = "SprintSummary", skip(app, interaction))]
 	pub async fn new(app: App, interaction: &Interaction, sprint: Sprint) -> Result<Action> {
-		let started_at = sprint
-			.starting_at
-			.with_timezone(&chrono_tz::Pacific::Auckland)
-			.format("%H:%M:%S");
-
-		let shortid = sprint.shortid;
-		let duration = sprint.formatted_duration();
-		let minutes = sprint.duration().num_minutes();
-
-		let participants = sprint.participants(app.clone()).await?;
-		let mut summaries = Vec::with_capacity(participants.len());
-		for p in participants {
-			let member = p.member.to_member(app.clone()).await?;
-			let name = member.nick.unwrap_or_else(|| member.user.name);
-			let words = p
-				.words_end
-				.and_then(|end| p.words_start.map(|start| end - start))
-				.unwrap_or(0);
-			let wpm = (words as f64) / (minutes as f64);
-			summaries.push((name, words, wpm));
-		}
-
-		summaries.sort_by_key(|(_, w, _)| *w);
-		let summary = summaries
-			.into_iter()
-			.map(|(name, words, wpm)| {
-				format!("_{name}_: **{words}** words (**{wpm:.1}** words per minute)")
-			})
-			.join("\n");
-
-		let content =
-			format!("🧮 Sprint `{shortid}`, {duration}, started at {started_at}:\n{summary}");
-
 		sprint
 			.update_status(app.clone(), SprintStatus::Summaried)
 			.await?;
@@ -67,7 +33,7 @@ impl SprintSummary {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint: sprint.id,
-			content,
+			content: sprint.summary_text(app).await?,
 		})
 		.into())
 	}
