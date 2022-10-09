@@ -1,3 +1,4 @@
+use chrono::Duration;
 use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
@@ -52,12 +53,18 @@ impl SprintWarning {
 		}
 
 		let Sprint { id, shortid, .. } = sprint;
-		let duration = format_duration(sprint.duration());
-		let starting_in = format_duration(
-			sprint
-				.starting_in()
-				.ok_or(miette!("Bug: sprint start is in the past"))?,
-		);
+		let duration = sprint.formatted_duration();
+		let starting_in = sprint.starting_in();
+		let starting_in = if starting_in <= Duration::zero() {
+			"now".into()
+		} else {
+			format_duration(
+				starting_in
+					.to_std()
+					.expect("starting_in is always above zero"),
+			)
+			.to_string()
+		};
 
 		let participant_list = sprint
 			.participants(app.clone())

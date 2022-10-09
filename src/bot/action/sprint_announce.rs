@@ -1,5 +1,4 @@
-use std::time::Duration;
-
+use chrono::Duration;
 use humantime::format_duration;
 use miette::{miette, IntoDiagnostic, Result};
 use tracing::debug;
@@ -15,7 +14,11 @@ use twilight_util::builder::InteractionResponseDataBuilder;
 use uuid::Uuid;
 
 use crate::{
-	bot::{context::Timer, utils::action_row, App},
+	bot::{
+		context::Timer,
+		utils::{action_row, time::ChronoDurationSaturatingSub},
+		App,
+	},
 	db::sprint::{Sprint, SprintStatus},
 };
 
@@ -41,25 +44,36 @@ impl SprintAnnounce {
 			.with_timezone(&chrono_tz::Pacific::Auckland)
 			.format("%H:%M:%S");
 
-		let starting_in = sprint
-			.starting_in()
-			.ok_or(miette!("Bug: sprint start is in the past"))?;
-
 		let shortid = sprint.shortid;
-		let duration = format_duration(sprint.duration());
-		let starting_in_disp = format_duration(starting_in);
+		let duration = sprint.formatted_duration();
+
+		let starting_in = sprint.starting_in();
+		let starting_in_disp = if starting_in <= Duration::zero() {
+			"now".into()
+		} else {
+			format!(
+				"in {}",
+				format_duration(
+					starting_in
+						.to_std()
+						.expect("starting_in is always above zero"),
+				)
+			)
+		};
+
 		let content = format!(
-			"⏱️  New sprint! `{shortid}` is starting in {starting_in_disp} (at {starting_at}), going for {duration}."
+			"⏱️  New sprint! `{shortid}` is starting {starting_in_disp} (at {starting_at}), going for {duration}."
 		);
 
 		sprint
 			.update_status(app.clone(), SprintStatus::Announced)
 			.await?;
 
-		if starting_in > Duration::from_secs(60) {
+		let warning_in = starting_in.saturating_sub_std(Duration::seconds(30));
+		if !warning_in.is_zero() {
 			debug!("set up sprint warn timer");
 			app.send_timer(Timer::new_after(
-				starting_in - Duration::from_secs(30),
+				warning_in,
 				SprintWarning::new(interaction, sprint.id),
 			)?)
 			.await?;
@@ -67,7 +81,7 @@ impl SprintAnnounce {
 
 		debug!("set up sprint start timer");
 		app.send_timer(Timer::new_after(
-			starting_in,
+			starting_in.positive_or(Duration::zero()).to_std().unwrap(),
 			SprintStart::new(interaction, sprint.id),
 		)?)
 		.await?;

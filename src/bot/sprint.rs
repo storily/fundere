@@ -32,7 +32,7 @@ use crate::{
 };
 
 use super::{
-	action::{CommandAck, SprintLeft, SprintWordsStart},
+	action::{CommandAck, SprintLeft, SprintWordsEnd, SprintWordsStart},
 	App,
 };
 
@@ -107,6 +107,9 @@ pub async fn on_component(
 		["start-words", uuid] => sprint_words_start(app.clone(), interaction, *uuid)
 			.await
 			.wrap_err("action: words modal: start")?,
+		["end-words", uuid] => sprint_words_end(app.clone(), interaction, *uuid)
+			.await
+			.wrap_err("action: words modal: end")?,
 		id => warn!(?id, "unhandled sprint component action"),
 	}
 
@@ -122,10 +125,19 @@ pub async fn on_modal(
 	debug!(?subids, ?component_data, "sprint modal action");
 
 	match subids {
-		["set-words", "start", uuid] => {
-			sprint_set_words_start(app.clone(), interaction, *uuid, component_data)
+		["set-words", "start", uuid] => sprint_set_words(
+			app.clone(),
+			interaction,
+			*uuid,
+			component_data,
+			"words_start",
+		)
+		.await
+		.wrap_err("action: words modal: starting")?,
+		["set-words", "end", uuid] => {
+			sprint_set_words(app.clone(), interaction, *uuid, component_data, "words_end")
 				.await
-				.wrap_err("action: words modal: starting")?
+				.wrap_err("action: words modal: ending")?
 		}
 		id => warn!(?id, "unhandled sprint modal action"),
 	}
@@ -150,7 +162,7 @@ async fn sprint_start(
 	let when = parse_when_relative_to(now.time(), get_string(options, "when").unwrap_or("15m"))?;
 
 	let now_with_time = now.date().and_time(when).ok_or(miette!("invalid time"))?;
-	let starting = if now_with_time <= now {
+	let starting = if now_with_time < now {
 		(now + Duration::days(1))
 			.date()
 			.and_time(when)
@@ -267,11 +279,32 @@ async fn sprint_words_start(app: App, interaction: &Interaction, uuid: &str) -> 
 	Ok(())
 }
 
-async fn sprint_set_words_start(
+async fn sprint_words_end(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
+	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let member = Member::try_from(interaction)?;
+	let sprint = Sprint::get(app.clone(), uuid)
+		.await
+		.wrap_err("sprint not found")?;
+
+	if sprint.is_cancelled() {
+		return Err(miette!("sprint was cancelled"));
+	}
+	if sprint.status >= SprintStatus::Summaried {
+		return Err(miette!("sprint has already been finalised"));
+	}
+
+	app.send_action(SprintWordsEnd::new(&interaction, sprint.id, member))
+		.await?;
+
+	Ok(())
+}
+
+async fn sprint_set_words(
 	app: App,
 	interaction: &Interaction,
 	uuid: &str,
 	data: &ModalInteractionData,
+	column: &str,
 ) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
 	let member = Member::try_from(interaction)?;
@@ -303,9 +336,7 @@ async fn sprint_set_words_start(
 		.transpose()?
 		.unwrap_or(0);
 
-	sprint
-		.set_words(app.clone(), member, words, "words_start")
-		.await?;
+	sprint.set_words(app.clone(), member, words, column).await?;
 
 	app.send_action(CommandAck::new(&interaction)).await?;
 

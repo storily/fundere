@@ -1,4 +1,3 @@
-use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
 use tracing::debug;
@@ -51,7 +50,7 @@ impl SprintStart {
 		}
 
 		let Sprint { id, shortid, .. } = sprint;
-		let duration = format_duration(sprint.duration());
+		let duration = sprint.formatted_duration();
 
 		let participant_list = sprint
 			.participants(app.clone())
@@ -61,7 +60,7 @@ impl SprintStart {
 			.join(", ");
 
 		let ending_at = sprint
-			.ending_at()?
+			.ending_at()
 			.with_timezone(&chrono_tz::Pacific::Auckland)
 			.format("%H:%M:%S");
 
@@ -72,7 +71,7 @@ impl SprintStart {
 			.update_status(app.clone(), SprintStatus::Started)
 			.await?;
 
-		if let Some(ending_in) = sprint.ending_in() {
+		if let Ok(ending_in) = sprint.ending_in().to_std() {
 			debug!("set up sprint end timer");
 			app.send_timer(Timer::new_after(
 				ending_in,
@@ -87,14 +86,24 @@ impl SprintStart {
 			.create_followup(&self.token)
 			.content(&content)
 			.into_diagnostic()?
-			.components(&action_row(vec![Component::Button(Button {
-				custom_id: Some(format!("sprint:join:{id}")),
-				disabled: false,
-				emoji: None,
-				label: Some("Join late".to_string()),
-				style: ButtonStyle::Secondary,
-				url: None,
-			})]))
+			.components(&action_row(vec![
+				Component::Button(Button {
+					custom_id: Some(format!("sprint:join:{id}")),
+					disabled: false,
+					emoji: None,
+					label: Some("Join late".to_string()),
+					style: ButtonStyle::Secondary,
+					url: None,
+				}),
+				Component::Button(Button {
+					custom_id: Some(format!("sprint:start-words:{id}")),
+					disabled: false,
+					emoji: None,
+					label: Some("Starting words".to_string()),
+					style: ButtonStyle::Secondary,
+					url: None,
+				}),
+			]))
 			.into_diagnostic()?
 			.exec()
 			.await

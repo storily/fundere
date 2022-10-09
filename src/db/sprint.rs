@@ -1,6 +1,5 @@
-use std::time::Duration;
-
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
+use humantime::{format_duration, FormattedDuration};
 use miette::{miette, Context, IntoDiagnostic, Result};
 use pg_interval::Interval;
 use postgres_types::{FromSql, ToSql};
@@ -80,7 +79,7 @@ impl Sprint {
 	pub async fn create<TZ>(
 		app: App,
 		starting_at: DateTime<TZ>,
-		duration: chrono::Duration,
+		duration: Duration,
 		member: Member,
 	) -> Result<Self>
 	where
@@ -135,7 +134,20 @@ impl Sprint {
 			.await
 			.into_diagnostic()
 			.and_then(|rows| rows.into_iter().map(Participant::from_row).collect())
-			.wrap_err("db: get sprint participants")
+			.wrap_err("db: get all sprint participants")
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn participant(&self, app: App, member: Member) -> Result<Participant> {
+		app.db
+			.query_one(
+				"SELECT * FROM sprint_participants WHERE sprint_id = $1 AND (member) = $2::member",
+				&[&self.id, &member],
+			)
+			.await
+			.into_diagnostic()
+			.and_then(Participant::from_row)
+			.wrap_err("db: get one sprint participant")
 	}
 
 	#[tracing::instrument(skip(app))]
@@ -214,35 +226,38 @@ impl Sprint {
 	}
 
 	pub fn duration(&self) -> Duration {
-		Duration::from_secs(
-			(self.duration.days as u64 + self.duration.months as u64 * 31)
+		Duration::seconds(
+			(self.duration.days as i64 + self.duration.months as i64 * 31)
 				* 24 * 60 * 60 * 1_000_000
-				+ (self.duration.microseconds as u64) / (1_000_000),
+				+ (self.duration.microseconds as i64) / (1_000_000),
 		)
 	}
 
-	pub fn starting_in(&self) -> Option<Duration> {
-		let now = Utc::now();
-		if self.starting_at > now {
-			Some(Duration::from_secs(
-				(self.starting_at - now).num_seconds() as _
-			))
-		} else {
-			None
-		}
+	/// Formatted duration, excluding sign
+	pub fn formatted_duration(&self) -> FormattedDuration {
+		let duration = self.duration();
+		format_duration(
+			if duration < Duration::zero() {
+				duration * -1
+			} else {
+				duration
+			}
+			.to_std()
+			.expect("duration is always positive or zero"),
+		)
 	}
 
-	pub fn ending_at(&self) -> Result<DateTime<Utc>> {
-		chrono::Duration::from_std(self.duration())
-			.into_diagnostic()
-			.map(|dur| self.starting_at + dur)
+	pub fn starting_in(&self) -> Duration {
+		let now = Utc::now();
+		self.starting_at - now
 	}
 
-	pub fn ending_in(&self) -> Option<Duration> {
+	pub fn ending_at(&self) -> DateTime<Utc> {
+		self.starting_at + self.duration()
+	}
+
+	pub fn ending_in(&self) -> Duration {
 		let now = Utc::now();
-		match self.ending_at() {
-			Ok(end) if end > now => Some(Duration::from_secs((end - now).num_seconds() as _)),
-			_ => None,
-		}
+		self.ending_at() - now
 	}
 }

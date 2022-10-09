@@ -1,7 +1,36 @@
-use std::str::FromStr;
+use std::{ops::Sub, str::FromStr};
 
 use chrono::{naive::NaiveTime, Duration};
 use miette::{IntoDiagnostic, Result};
+
+pub trait ChronoDurationSaturatingSub {
+	fn positive_or(self, default: Duration) -> Duration;
+	fn saturating_sub(self, other: Self) -> Duration;
+
+	fn saturating_sub_std(self, other: Self) -> std::time::Duration
+	where
+		Self: Sized,
+		Self: Sub,
+	{
+		// UNWRAP: it will always be zero or above
+		self.saturating_sub(other).to_std().unwrap()
+	}
+}
+
+impl ChronoDurationSaturatingSub for Duration {
+	fn positive_or(self, default: Duration) -> Duration {
+		if self > Self::zero() {
+			self
+		} else {
+			default
+		}
+	}
+
+	// It's annoyingly hard to define this on the trait, but there's only one impl of this so ehhh.
+	fn saturating_sub(self, other: Self) -> Duration {
+		(self - other).positive_or(Duration::zero())
+	}
+}
 
 pub fn parse_when_relative_to(now: NaiveTime, s: &str) -> Result<NaiveTime> {
 	if s.to_ascii_lowercase() == "now" {
