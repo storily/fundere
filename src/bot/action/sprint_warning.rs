@@ -1,6 +1,8 @@
 use humantime::format_duration;
+use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
 use twilight_http::client::InteractionClient;
+use twilight_mention::Mention;
 use twilight_model::{
 	application::{
 		component::{button::ButtonStyle, Button, Component},
@@ -35,7 +37,7 @@ impl SprintWarning {
 	}
 
 	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
-		let sprint = Sprint::from_current(app.clone(), self.sprint).await?;
+		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
 		if sprint.status >= SprintStatus::Started {
 			return Err(miette!(
 				"Bug: went to warn sprint but it was already started"
@@ -49,7 +51,17 @@ impl SprintWarning {
 				.starting_in()
 				.ok_or(miette!("Bug: sprint start is in the past"))?,
 		);
-		let content = format!("⏱️ Sprint `{shortid}` is starting in {starting_in} for {duration}!");
+
+		let participant_list = sprint
+			.participants(app.clone())
+			.await?
+			.iter()
+			.map(|p| p.mention().to_string())
+			.join(", ");
+
+		let content = format!(
+			"⏱️ Sprint `{shortid}` is starting in {starting_in} for {duration}! // {participant_list}"
+		);
 		// TODO: ding
 
 		interaction_client
@@ -62,7 +74,7 @@ impl SprintWarning {
 					disabled: false,
 					emoji: None,
 					label: Some("Join".to_string()),
-					style: ButtonStyle::Primary,
+					style: ButtonStyle::Secondary,
 					url: None,
 				}),
 				Component::Button(Button {

@@ -150,7 +150,7 @@ async fn sprint_start(
 async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
 	let member = Member::try_from(interaction)?;
-	let sprint = Sprint::from_current(app.clone(), uuid)
+	let sprint = Sprint::get_current(app.clone(), uuid)
 		.await
 		.wrap_err("that sprint isn't current")?;
 
@@ -169,7 +169,7 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
 	let member = Member::try_from(interaction)?;
-	let sprint = Sprint::from_current(app.clone(), uuid)
+	let sprint = Sprint::get_current(app.clone(), uuid)
 		.await
 		.wrap_err("that sprint isn't current")?;
 
@@ -187,7 +187,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 
 async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
-	let sprint = Sprint::from_current(app.clone(), uuid)
+	let sprint = Sprint::get_current(app.clone(), uuid)
 		.await
 		.wrap_err("that sprint isn't current")?;
 

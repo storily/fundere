@@ -1,6 +1,7 @@
 use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
+use tracing::debug;
 use twilight_http::client::InteractionClient;
 use twilight_mention::Mention;
 use twilight_model::{
@@ -13,7 +14,7 @@ use twilight_model::{
 use uuid::Uuid;
 
 use crate::{
-	bot::{utils::action_row, App},
+	bot::{action::SprintEnd, context::Timer, utils::action_row, App},
 	db::sprint::{Sprint, SprintStatus},
 };
 
@@ -37,7 +38,7 @@ impl SprintStart {
 	}
 
 	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
-		let sprint = Sprint::from_current(app.clone(), self.sprint).await?;
+		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
 		if sprint.status >= SprintStatus::Started {
 			return Err(miette!("Bug: went to start sprint but it was already"));
 		}
@@ -45,19 +46,35 @@ impl SprintStart {
 		let Sprint { id, shortid, .. } = sprint;
 		let duration = format_duration(sprint.duration());
 
-		let participants = sprint.participants(app.clone()).await?;
-		let participant_list = participants
+		let participant_list = sprint
+			.participants(app.clone())
+			.await?
 			.iter()
 			.map(|p| p.mention().to_string())
 			.join(", ");
 
-		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}!\nWith {} participants: {participant_list}", participants.len());
+		let ending_at = sprint
+			.ending_at()?
+			.with_timezone(&chrono_tz::Pacific::Auckland)
+			.format("%H:%M:%S");
+
+		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}! (ending at {ending_at}) // {participant_list}");
 		// TODO: ding
-		// TODO: schedule end
 
 		sprint
 			.update_status(app.clone(), SprintStatus::Started)
 			.await?;
+
+		if let Some(ending_in) = sprint.ending_in() {
+			debug!("set up sprint end timer");
+			app.send_timer(Timer::new_after(
+				ending_in,
+				SprintEnd::new(self.id, &self.token, sprint.id),
+			)?)
+			.await?;
+		} else {
+			return Err(miette!("sprint ended before it began???"));
+		}
 
 		interaction_client
 			.create_followup(&self.token)
@@ -68,7 +85,7 @@ impl SprintStart {
 				disabled: false,
 				emoji: None,
 				label: Some("Join late".to_string()),
-				style: ButtonStyle::Primary,
+				style: ButtonStyle::Secondary,
 				url: None,
 			})]))
 			.into_diagnostic()?

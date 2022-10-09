@@ -54,7 +54,7 @@ impl SprintJoined {
 									custom_id: Some(format!("sprint:start-words:{sprint_id}")),
 									disabled: false,
 									emoji: None,
-									label: Some("Starting words".to_string()),
+									label: Some("Record starting words early".to_string()),
 									style: ButtonStyle::Primary,
 									url: None,
 								}),

@@ -100,7 +100,17 @@ impl Sprint {
 	}
 
 	#[tracing::instrument(skip(app))]
-	pub async fn from_current(app: App, uuid: Uuid) -> Result<Self> {
+	pub async fn get(app: App, uuid: Uuid) -> Result<Self> {
+		app.db
+			.query_one("SELECT * FROM sprints WHERE id = $1", &[&uuid])
+			.await
+			.into_diagnostic()
+			.and_then(Self::from_row)
+			.wrap_err("db: get sprint")
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn get_current(app: App, uuid: Uuid) -> Result<Self> {
 		app.db
 			.query_one("SELECT * FROM sprints_current WHERE id = $1", &[&uuid])
 			.await
@@ -190,6 +200,20 @@ impl Sprint {
 			))
 		} else {
 			None
+		}
+	}
+
+	pub fn ending_at(&self) -> Result<DateTime<Utc>> {
+		chrono::Duration::from_std(self.duration())
+			.into_diagnostic()
+			.map(|dur| self.starting_at + dur)
+	}
+
+	pub fn ending_in(&self) -> Option<Duration> {
+		let now = Utc::now();
+		match self.ending_at() {
+			Ok(end) if end > now => Some(Duration::from_secs((end - now).num_seconds() as _)),
+			_ => None,
 		}
 	}
 }

@@ -103,7 +103,7 @@ impl SprintAnnounce {
 									disabled: false,
 									emoji: None,
 									label: Some("Join".to_string()),
-									style: ButtonStyle::Primary,
+									style: ButtonStyle::Success,
 									url: None,
 								}),
 								Component::Button(Button {

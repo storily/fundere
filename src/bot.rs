@@ -71,6 +71,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 			CommandError(data) => data.handle(&interaction_client).await,
 			SprintAnnounce(data) => data.handle(&interaction_client).await,
 			SprintCancelled(data) => data.handle(&interaction_client).await,
+			SprintEnd(data) => data.handle(app.clone(), &interaction_client).await,
 			SprintJoined(data) => data.handle(&interaction_client).await,
 			SprintLeft(data) => data.handle(&interaction_client).await,
 			SprintStart(data) => data.handle(app.clone(), &interaction_client).await,
