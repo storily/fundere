@@ -229,6 +229,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 			.and_then(|m| m.user.as_ref())
 			.ok_or(miette!("can only leave sprint from a guild"))?;
 
+		sprint.cancel(app.clone()).await?;
 		app.send_action(SprintCancelled::new(&interaction, sprint.shortid, user).as_followup())
 			.await?;
 	}
