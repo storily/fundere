@@ -68,6 +68,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 		let action_dbg = format!("action: {action:?}");
 		match action {
 			CalcResult(data) => data.handle(&interaction_client).await,
+			CommandAck(data) => data.handle(&interaction_client).await,
 			CommandError(data) => data.handle(&interaction_client).await,
 			SprintAnnounce(data) => data.handle(&interaction_client).await,
 			SprintCancelled(data) => data.handle(&interaction_client).await,
@@ -76,6 +77,7 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 			SprintLeft(data) => data.handle(&interaction_client).await,
 			SprintStart(data) => data.handle(app.clone(), &interaction_client).await,
 			SprintWarning(data) => data.handle(app.clone(), &interaction_client).await,
+			SprintWordsStart(data) => data.handle(app.clone(), &interaction_client).await,
 		}
 		.wrap_err(action_dbg)
 		.unwrap_or_else(|err| error!("{err:?}"));
@@ -141,7 +143,7 @@ async fn ticker(app: App, mut timings: Receiver<Timer>) -> Result<()> {
 							error!(%err, "timer has failed, this should never happen");
 						}
 						Some(Ok(payload)) => {
-							debug!(?payload, "timer has finished, executing");
+							info!(?payload, "timer has finished, executing");
 							app.send_action(payload).await.unwrap_or_else(|err| {
 								error!(%err, "sending timer payload failed");
 							});
@@ -162,7 +164,7 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 	match &interaction.data {
 		Some(InteractionData::ApplicationCommand(data)) => {
 			handle_interaction_error(&app, interaction, async {
-				debug!(command=?data.name, "handle slash command");
+				info!(command=?data.name, "handle slash command");
 				match data.name.as_str() {
 					"sprint" => sprint::on_command(app.clone(), interaction, &data)
 						.await
@@ -181,7 +183,7 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 		Some(InteractionData::MessageComponent(data)) => {
 			handle_interaction_error(&app, interaction, async {
 				let subids: Vec<&str> = data.custom_id.split(':').collect();
-				debug!(?subids, "handle component message");
+				info!(?subids, "handle component message");
 				match subids.first() {
 					Some(&"sprint") => {
 						sprint::on_component(app.clone(), interaction, &subids[1..], &data)
@@ -190,6 +192,25 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					}
 					Some(other) => {
 						warn!("unhandled component action: {other:?}");
+						Ok(())
+					}
+					None => Ok(()),
+				}
+			})
+			.await?;
+		}
+		Some(InteractionData::ModalSubmit(data)) => {
+			handle_interaction_error(&app, interaction, async {
+				let subids: Vec<&str> = data.custom_id.split(':').collect();
+				info!(?subids, "handle modal submit");
+				match subids.first() {
+					Some(&"sprint") => {
+						sprint::on_modal(app.clone(), interaction, &subids[1..], &data)
+							.await
+							.wrap_err("modal: sprint")
+					}
+					Some(other) => {
+						warn!("unhandled modal submit: {other:?}");
 						Ok(())
 					}
 					None => Ok(()),

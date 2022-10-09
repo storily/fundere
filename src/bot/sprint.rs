@@ -8,6 +8,7 @@ use twilight_model::application::{
 	interaction::{
 		application_command::{CommandData, CommandDataOption, CommandOptionValue},
 		message_component::MessageComponentInteractionData,
+		modal::ModalInteractionData,
 		Interaction,
 	},
 };
@@ -30,7 +31,10 @@ use crate::{
 	},
 };
 
-use super::{action::SprintLeft, App};
+use super::{
+	action::{CommandAck, SprintLeft, SprintWordsStart},
+	App,
+};
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -100,7 +104,30 @@ pub async fn on_component(
 		["cancel", uuid] => sprint_cancel(app.clone(), interaction, *uuid)
 			.await
 			.wrap_err("action: cancel")?,
+		["start-words", uuid] => sprint_words_start(app.clone(), interaction, *uuid)
+			.await
+			.wrap_err("action: words modal: start")?,
 		id => warn!(?id, "unhandled sprint component action"),
+	}
+
+	Ok(())
+}
+
+pub async fn on_modal(
+	app: App,
+	interaction: &Interaction,
+	subids: &[&str],
+	component_data: &ModalInteractionData,
+) -> Result<()> {
+	debug!(?subids, ?component_data, "sprint modal action");
+
+	match subids {
+		["set-words", "start", uuid] => {
+			sprint_set_words_start(app.clone(), interaction, *uuid, component_data)
+				.await
+				.wrap_err("action: words modal: starting")?
+		}
+		id => warn!(?id, "unhandled sprint modal action"),
 	}
 
 	Ok(())
@@ -205,6 +232,70 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 
 	app.send_action(SprintCancelled::new(&interaction, sprint.shortid, user))
 		.await?;
+
+	Ok(())
+}
+
+async fn sprint_words_start(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
+	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let sprint = Sprint::get(app.clone(), uuid)
+		.await
+		.wrap_err("sprint not found")?;
+
+	if sprint.is_cancelled() {
+		return Err(miette!("sprint was cancelled"));
+	}
+	if sprint.status >= SprintStatus::Summaried {
+		return Err(miette!("sprint has already been finalised"));
+	}
+
+	app.send_action(SprintWordsStart::new(&interaction, sprint.id))
+		.await?;
+
+	Ok(())
+}
+
+async fn sprint_set_words_start(
+	app: App,
+	interaction: &Interaction,
+	uuid: &str,
+	data: &ModalInteractionData,
+) -> Result<()> {
+	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+	let member = Member::try_from(interaction)?;
+	let sprint = Sprint::get(app.clone(), uuid)
+		.await
+		.wrap_err("sprint not found")?;
+
+	if sprint.is_cancelled() {
+		return Err(miette!("sprint was cancelled"));
+	}
+	if sprint.status >= SprintStatus::Summaried {
+		return Err(miette!("sprint has already been finalised"));
+	}
+
+	let words = data
+		.components
+		.iter()
+		.flat_map(|row| row.components.iter())
+		.find_map(|component| {
+			if component.custom_id == "words" {
+				Some(&component.value)
+			} else {
+				None
+			}
+		})
+		.ok_or_else(|| miette!("words is a required field"))?
+		.as_deref()
+		.map(|words| i32::from_str(words).into_diagnostic())
+		.transpose()?
+		.unwrap_or(0);
+
+	sprint
+		.set_words(app.clone(), member, words, "words_start")
+		.await?;
+
+	app.send_action(CommandAck::new(&interaction)).await?;
 
 	Ok(())
 }

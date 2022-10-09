@@ -53,6 +53,9 @@ impl Participant {
 #[derive(Debug, Clone)]
 pub struct Sprint {
 	pub id: Uuid,
+	pub created_at: DateTime<Utc>,
+	pub updated_at: DateTime<Utc>,
+	pub cancelled_at: Option<DateTime<Utc>>,
 	pub shortid: i32,
 	pub starting_at: DateTime<Utc>,
 	pub duration: Interval,
@@ -63,6 +66,9 @@ impl Sprint {
 	fn from_row(row: Row) -> Result<Self> {
 		Ok(Self {
 			id: row.try_get("id").into_diagnostic()?,
+			created_at: row.try_get("created_at").into_diagnostic()?,
+			updated_at: row.try_get("updated_at").into_diagnostic()?,
+			cancelled_at: row.try_get("cancelled_at").into_diagnostic()?,
 			shortid: row.try_get("shortid").into_diagnostic()?,
 			starting_at: row.try_get("starting_at").into_diagnostic()?,
 			duration: row.try_get("duration").into_diagnostic()?,
@@ -182,6 +188,29 @@ impl Sprint {
 			.into_diagnostic()
 			.wrap_err("db: leave sprint")
 			.map(drop)
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn set_words(
+		&self,
+		app: App,
+		member: Member,
+		words: i32,
+		column: &str,
+	) -> Result<()> {
+		app.db
+			.query(
+				&format!("UPDATE sprint_participants SET {column} = $3 WHERE sprint_id = $1 AND member = $2"),
+				&[&self.id, &member, &words],
+			)
+			.await
+			.into_diagnostic()
+			.wrap_err("db: set words for sprint")
+			.map(drop)
+	}
+
+	pub fn is_cancelled(&self) -> bool {
+		self.cancelled_at.is_some()
 	}
 
 	pub fn duration(&self) -> Duration {
