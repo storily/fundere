@@ -3,7 +3,6 @@ use std::time::Duration;
 use humantime::format_duration;
 use miette::{miette, IntoDiagnostic, Result};
 use tracing::debug;
-use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::{
 		component::{button::ButtonStyle, Button, Component},
@@ -16,16 +15,11 @@ use twilight_util::builder::InteractionResponseDataBuilder;
 use uuid::Uuid;
 
 use crate::{
-	bot::{
-		action::{SprintStart, SprintWarning},
-		context::Timer,
-		utils::action_row,
-		App,
-	},
+	bot::{context::Timer, utils::action_row, App},
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::Action;
+use super::{Action, ActionClass, Args, SprintStart, SprintWarning};
 
 #[derive(Debug, Clone)]
 pub struct SprintAnnounce {
@@ -78,15 +72,21 @@ impl SprintAnnounce {
 		)?)
 		.await?;
 
-		Ok(Action::SprintAnnounce(Self {
+		Ok(ActionClass::SprintAnnounce(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint: sprint.id,
 			content,
-		}))
+		})
+		.into())
 	}
 
-	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			interaction_client, ..
+		}: Args<'_>,
+	) -> Result<()> {
 		let sprint_id = self.sprint;
 		interaction_client
 			.create_response(

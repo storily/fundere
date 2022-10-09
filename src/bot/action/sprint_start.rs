@@ -2,7 +2,6 @@ use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
 use tracing::debug;
-use twilight_http::client::InteractionClient;
 use twilight_mention::Mention;
 use twilight_model::{
 	application::{
@@ -14,11 +13,11 @@ use twilight_model::{
 use uuid::Uuid;
 
 use crate::{
-	bot::{action::SprintEnd, context::Timer, utils::action_row, App},
+	bot::{context::Timer, utils::action_row},
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::Action;
+use super::{Action, ActionClass, Args, SprintEnd};
 
 #[derive(Debug, Clone)]
 pub struct SprintStart {
@@ -30,14 +29,22 @@ pub struct SprintStart {
 impl SprintStart {
 	#[tracing::instrument(name = "SprintStart", skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: Uuid) -> Action {
-		Action::SprintStart(Self {
+		ActionClass::SprintStart(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint,
 		})
+		.into()
 	}
 
-	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			app,
+			interaction_client,
+			..
+		}: Args<'_>,
+	) -> Result<()> {
 		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
 		if sprint.status >= SprintStatus::Started {
 			return Err(miette!("Bug: went to start sprint but it was already"));

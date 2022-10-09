@@ -1,7 +1,6 @@
 use std::iter::{once, repeat};
 
 use miette::{GraphicalReportHandler, GraphicalTheme, IntoDiagnostic, Report, Result};
-use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::interaction::Interaction,
 	channel::message::MessageFlags,
@@ -10,7 +9,7 @@ use twilight_model::{
 };
 use twilight_util::builder::{embed::EmbedBuilder, InteractionResponseDataBuilder};
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct CommandError {
@@ -27,14 +26,20 @@ impl CommandError {
 			.render_report(&mut error, err.as_ref())
 			.into_diagnostic()?;
 		error.extend(repeat('`').take(3));
-		Ok(Action::CommandError(Self {
+		Ok(ActionClass::CommandError(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			error,
-		}))
+		})
+		.into())
 	}
 
-	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			interaction_client, ..
+		}: Args<'_>,
+	) -> Result<()> {
 		interaction_client
 			.create_response(
 				self.id,

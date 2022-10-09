@@ -181,7 +181,7 @@ impl Sprint {
 	pub async fn leave(&self, app: App, member: Member) -> Result<()> {
 		app.db
 			.query(
-				"DELETE FROM sprint_participants WHERE sprint_id = $1 AND member = $2",
+				"DELETE FROM sprint_participants WHERE sprint_id = $1 AND (member) = $2::member",
 				&[&self.id, &member],
 			)
 			.await
@@ -200,7 +200,7 @@ impl Sprint {
 	) -> Result<()> {
 		app.db
 			.query(
-				&format!("UPDATE sprint_participants SET {column} = $3 WHERE sprint_id = $1 AND member = $2"),
+				&format!("UPDATE sprint_participants SET {column} = $3 WHERE sprint_id = $1 AND (member) = $2::member"),
 				&[&self.id, &member, &words],
 			)
 			.await

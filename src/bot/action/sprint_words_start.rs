@@ -1,5 +1,4 @@
 use miette::{miette, IntoDiagnostic, Result};
-use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::{
 		component::{text_input::TextInputStyle, Component, TextInput},
@@ -12,11 +11,11 @@ use twilight_util::builder::InteractionResponseDataBuilder;
 use uuid::Uuid;
 
 use crate::{
-	bot::{utils::action_row, App},
+	bot::utils::action_row,
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintWordsStart {
@@ -28,14 +27,22 @@ pub struct SprintWordsStart {
 impl SprintWordsStart {
 	#[tracing::instrument(name = "SprintWordsStart", skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: Uuid) -> Action {
-		Action::SprintWordsStart(Self {
+		ActionClass::SprintWordsStart(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint,
 		})
+		.into()
 	}
 
-	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			app,
+			interaction_client,
+			..
+		}: Args<'_>,
+	) -> Result<()> {
 		let sprint = Sprint::get(app.clone(), self.sprint).await?;
 		if sprint.is_cancelled() {
 			return Err(miette!("Can't set starting words on a cancelled sprint."));

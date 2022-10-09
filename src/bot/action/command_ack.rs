@@ -1,12 +1,11 @@
 use miette::{IntoDiagnostic, Result};
-use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::interaction::Interaction,
 	http::interaction::{InteractionResponse, InteractionResponseType},
 	id::{marker::InteractionMarker, Id},
 };
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct CommandAck {
@@ -16,13 +15,19 @@ pub struct CommandAck {
 impl CommandAck {
 	#[tracing::instrument(name = "CommandAck", skip(interaction))]
 	pub fn new(interaction: &Interaction) -> Action {
-		Action::CommandAck(Self {
+		ActionClass::CommandAck(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 		})
+		.into()
 	}
 
-	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			interaction_client, ..
+		}: Args<'_>,
+	) -> Result<()> {
 		interaction_client
 			.create_response(
 				self.id,

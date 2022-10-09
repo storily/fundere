@@ -1,7 +1,6 @@
 use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
-use twilight_http::client::InteractionClient;
 use twilight_mention::Mention;
 use twilight_model::{
 	application::{
@@ -13,11 +12,11 @@ use twilight_model::{
 use uuid::Uuid;
 
 use crate::{
-	bot::{utils::action_row, App},
+	bot::utils::action_row,
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintWarning {
@@ -29,14 +28,22 @@ pub struct SprintWarning {
 impl SprintWarning {
 	#[tracing::instrument(name = "SprintWarning", skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: Uuid) -> Action {
-		Action::SprintWarning(Self {
+		ActionClass::SprintWarning(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint,
 		})
+		.into()
 	}
 
-	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			app,
+			interaction_client,
+			..
+		}: Args<'_>,
+	) -> Result<()> {
 		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
 		if sprint.status >= SprintStatus::Started {
 			return Err(miette!(

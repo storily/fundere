@@ -1,5 +1,4 @@
 use miette::{IntoDiagnostic, Result};
-use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::interaction::Interaction,
 	channel::message::MessageFlags,
@@ -8,7 +7,7 @@ use twilight_model::{
 };
 use twilight_util::builder::{embed::EmbedBuilder, InteractionResponseDataBuilder};
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct CalcResult {
@@ -21,16 +20,22 @@ pub struct CalcResult {
 impl CalcResult {
 	#[tracing::instrument(name = "CalcResult", skip(interaction))]
 	pub fn new(interaction: &Interaction, input: &str, result: &str, public: bool) -> Action {
-		Action::CalcResult(Self {
+		ActionClass::CalcResult(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			input: input.to_string(),
 			result: result.to_string(),
 			public,
 		})
+		.into()
 	}
 
-	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			interaction_client, ..
+		}: Args<'_>,
+	) -> Result<()> {
 		interaction_client
 			.create_response(
 				self.id,

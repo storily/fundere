@@ -195,6 +195,7 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 
 async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let uuid = Uuid::from_str(uuid).into_diagnostic()?;
+
 	let member = Member::try_from(interaction)?;
 	let sprint = Sprint::get_current(app.clone(), uuid)
 		.await
@@ -206,8 +207,19 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 
 	sprint.leave(app.clone(), member).await?;
 
-	app.send_action(SprintLeft::new(&interaction, sprint))
+	app.send_action(SprintLeft::new(&interaction, &sprint))
 		.await?;
+
+	if sprint.participants(app.clone()).await?.is_empty() {
+		let user = interaction
+			.member
+			.as_ref()
+			.and_then(|m| m.user.as_ref())
+			.ok_or(miette!("can only leave sprint from a guild"))?;
+
+		app.send_action(SprintCancelled::new(&interaction, sprint.shortid, user).as_followup())
+			.await?;
+	}
 
 	Ok(())
 }

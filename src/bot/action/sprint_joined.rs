@@ -1,5 +1,4 @@
 use miette::{IntoDiagnostic, Result};
-use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::{
 		component::{button::ButtonStyle, Button, Component},
@@ -14,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{bot::utils::action_row, db::sprint::Sprint};
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintJoined {
@@ -27,15 +26,21 @@ pub struct SprintJoined {
 impl SprintJoined {
 	#[tracing::instrument(name = "SprintJoined", skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: Sprint) -> Action {
-		Action::SprintJoined(Self {
+		ActionClass::SprintJoined(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint_id: sprint.id,
 			shortid: sprint.shortid,
 		})
+		.into()
 	}
 
-	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			interaction_client, ..
+		}: Args<'_>,
+	) -> Result<()> {
 		let Self {
 			sprint_id, shortid, ..
 		} = self;

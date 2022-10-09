@@ -1,5 +1,4 @@
 use miette::{IntoDiagnostic, Result};
-use twilight_http::client::InteractionClient;
 use twilight_model::{
 	application::interaction::Interaction,
 	channel::message::MessageFlags,
@@ -11,7 +10,7 @@ use uuid::Uuid;
 
 use crate::db::sprint::Sprint;
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintLeft {
@@ -23,16 +22,22 @@ pub struct SprintLeft {
 
 impl SprintLeft {
 	#[tracing::instrument(name = "SprintLeft", skip(interaction))]
-	pub fn new(interaction: &Interaction, sprint: Sprint) -> Action {
-		Action::SprintLeft(Self {
+	pub fn new(interaction: &Interaction, sprint: &Sprint) -> Action {
+		ActionClass::SprintLeft(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint_id: sprint.id,
 			shortid: sprint.shortid,
 		})
+		.into()
 	}
 
-	pub async fn handle(self, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			interaction_client, ..
+		}: Args<'_>,
+	) -> Result<()> {
 		let Self { shortid, .. } = self;
 		interaction_client
 			.create_response(

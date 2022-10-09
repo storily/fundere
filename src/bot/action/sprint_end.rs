@@ -1,6 +1,5 @@
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
-use twilight_http::client::InteractionClient;
 use twilight_mention::Mention;
 use twilight_model::{
 	application::component::{button::ButtonStyle, Button, Component},
@@ -9,11 +8,11 @@ use twilight_model::{
 use uuid::Uuid;
 
 use crate::{
-	bot::{utils::action_row, App},
+	bot::utils::action_row,
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::Action;
+use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintEnd {
@@ -25,14 +24,22 @@ pub struct SprintEnd {
 impl SprintEnd {
 	#[tracing::instrument(name = "SprintEnd", skip(token))]
 	pub fn new(id: Id<InteractionMarker>, token: &str, sprint: Uuid) -> Action {
-		Action::SprintEnd(Self {
+		ActionClass::SprintEnd(Self {
 			id,
 			token: token.to_string(),
 			sprint,
 		})
+		.into()
 	}
 
-	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(
+		self,
+		Args {
+			app,
+			interaction_client,
+			..
+		}: Args<'_>,
+	) -> Result<()> {
 		let sprint = Sprint::get(app.clone(), self.sprint).await?;
 		if sprint.status >= SprintStatus::Ended {
 			return Err(miette!("Bug: went to end sprint but it was already"));

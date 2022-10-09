@@ -64,23 +64,12 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 	info!("wait for actions");
 	while let Some(action) = actions.recv().await {
 		debug!(?action, "action received at controller");
-		use action::Action::*;
 		let action_dbg = format!("action: {action:?}");
-		match action {
-			CalcResult(data) => data.handle(&interaction_client).await,
-			CommandAck(data) => data.handle(&interaction_client).await,
-			CommandError(data) => data.handle(&interaction_client).await,
-			SprintAnnounce(data) => data.handle(&interaction_client).await,
-			SprintCancelled(data) => data.handle(&interaction_client).await,
-			SprintEnd(data) => data.handle(app.clone(), &interaction_client).await,
-			SprintJoined(data) => data.handle(&interaction_client).await,
-			SprintLeft(data) => data.handle(&interaction_client).await,
-			SprintStart(data) => data.handle(app.clone(), &interaction_client).await,
-			SprintWarning(data) => data.handle(app.clone(), &interaction_client).await,
-			SprintWordsStart(data) => data.handle(app.clone(), &interaction_client).await,
-		}
-		.wrap_err(action_dbg)
-		.unwrap_or_else(|err| error!("{err:?}"));
+		action
+			.handle(app.clone(), &interaction_client)
+			.await
+			.wrap_err(action_dbg)
+			.unwrap_or_else(|err| error!("{err:?}"));
 	}
 
 	Ok(())
