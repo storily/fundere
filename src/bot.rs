@@ -1,5 +1,5 @@
 use futures_util::{FutureExt, StreamExt};
-use miette::{Context, IntoDiagnostic, Result, Report};
+use miette::{Context, IntoDiagnostic, Report, Result};
 use tokio::{
 	sync::mpsc::{self, Receiver},
 	task::{spawn, JoinSet},

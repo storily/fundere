@@ -1,4 +1,4 @@
-use miette::{IntoDiagnostic, Result};
+use miette::{miette, IntoDiagnostic, Result};
 use twilight_model::{
 	application::interaction::Interaction,
 	http::interaction::{InteractionResponse, InteractionResponseType},
@@ -16,7 +16,7 @@ use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintSummary {
-	pub id: Id<InteractionMarker>,
+	pub id: Option<Id<InteractionMarker>>,
 	pub token: String,
 	pub sprint: Uuid,
 	pub content: String,
@@ -30,12 +30,27 @@ impl SprintSummary {
 			.await?;
 
 		Ok(ActionClass::SprintSummary(Self {
-			id: interaction.id,
+			id: Some(interaction.id),
 			token: interaction.token.clone(),
 			sprint: sprint.id,
 			content: sprint.summary_text(app).await?,
 		})
 		.into())
+	}
+
+	#[tracing::instrument(name = "SprintSummary::followup", skip(app))]
+	pub async fn new_from_db(app: App, sprint: Sprint) -> Result<Action> {
+		sprint
+			.update_status(app.clone(), SprintStatus::Summaried)
+			.await?;
+
+		Ok(Action::from(ActionClass::SprintSummary(Self {
+			id: None,
+			token: sprint.interaction_token.clone(),
+			sprint: sprint.id,
+			content: sprint.summary_text(app).await?,
+		}))
+		.as_followup())
 	}
 
 	pub async fn handle(
@@ -55,10 +70,10 @@ impl SprintSummary {
 				.await
 				.into_diagnostic()
 				.map(drop)
-		} else {
+		} else if let Some(interaction_id) = self.id {
 			interaction_client
 				.create_response(
-					self.id,
+					interaction_id,
 					&self.token,
 					&InteractionResponse {
 						kind: InteractionResponseType::ChannelMessageWithSource,
@@ -73,6 +88,10 @@ impl SprintSummary {
 				.await
 				.into_diagnostic()
 				.map(drop)
+		} else {
+			Err(miette!(
+				"cannot handle interaction with no id or not a followup"
+			))
 		}
 	}
 }

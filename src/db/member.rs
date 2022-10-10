@@ -4,7 +4,10 @@ use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::{
 	application::interaction::Interaction,
 	guild::Member as DiscordMember,
-	id::{marker::{UserMarker, GuildMarker}, Id},
+	id::{
+		marker::{GuildMarker, UserMarker},
+		Id,
+	},
 	user::User,
 };
 
@@ -58,15 +61,15 @@ impl Mention<Id<UserMarker>> for Member {
 }
 
 impl From<Member> for Id<UserMarker> {
-    fn from(chan: Member) -> Self {
-        Id::new(chan.0.user_id as _)
-    }
+	fn from(chan: Member) -> Self {
+		Id::new(chan.0.user_id as _)
+	}
 }
 
 impl From<Member> for Id<GuildMarker> {
-    fn from(chan: Member) -> Self {
-        Id::new(chan.0.guild_id as _)
-    }
+	fn from(chan: Member) -> Self {
+		Id::new(chan.0.guild_id as _)
+	}
 }
 
 impl TryFrom<&Interaction> for Member {

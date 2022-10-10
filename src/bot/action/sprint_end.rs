@@ -1,10 +1,7 @@
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
 use twilight_mention::Mention;
-use twilight_model::{
-	application::component::{button::ButtonStyle, Button, Component},
-	id::{marker::InteractionMarker, Id},
-};
+use twilight_model::application::component::{button::ButtonStyle, Button, Component};
 use uuid::Uuid;
 
 use crate::{
@@ -16,18 +13,16 @@ use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintEnd {
-	pub id: Id<InteractionMarker>,
 	pub token: String,
 	pub sprint: Uuid,
 }
 
 impl SprintEnd {
-	#[tracing::instrument(name = "SprintEnd", skip(token))]
-	pub fn new(id: Id<InteractionMarker>, token: &str, sprint: Uuid) -> Action {
+	#[tracing::instrument(name = "SprintEnd")]
+	pub fn new(sprint: &Sprint) -> Action {
 		ActionClass::SprintEnd(Self {
-			id,
-			token: token.to_string(),
-			sprint,
+			token: sprint.interaction_token.clone(),
+			sprint: sprint.id,
 		})
 		.into()
 	}

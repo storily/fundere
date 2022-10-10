@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::bot::App;
 
-use super::{member::Member, channel::Channel};
+use super::{channel::Channel, member::Member};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ToSql, FromSql)]
 #[postgres(name = "sprint_status")]
@@ -60,6 +60,7 @@ pub struct Sprint {
 	pub starting_at: DateTime<Utc>,
 	pub duration: Interval,
 	pub status: SprintStatus,
+	pub interaction_token: String,
 	pub channels: Vec<Channel>,
 }
 
@@ -74,6 +75,7 @@ impl Sprint {
 			starting_at: row.try_get("starting_at").into_diagnostic()?,
 			duration: row.try_get("duration").into_diagnostic()?,
 			status: row.try_get("status").into_diagnostic()?,
+			interaction_token: row.try_get("interaction_token").into_diagnostic()?,
 			channels: row.try_get("channels").into_diagnostic()?,
 		})
 	}
@@ -83,21 +85,22 @@ impl Sprint {
 		app: App,
 		starting_at: DateTime<TZ>,
 		duration: Duration,
+		interaction_token: &str,
 		channel: Channel,
 		member: Member,
 	) -> Result<Self>
 	where
 		TZ: TimeZone,
 	{
-		// TODO: store interaction ID
 		let sprint = app
 			.db
 			.query_one(
-				"INSERT INTO sprints (starting_at, duration, channels) VALUES ($1, $2, $3) RETURNING *",
+				"INSERT INTO sprints (starting_at, duration, interaction_token, channels) VALUES ($1, $2, $3, $4) RETURNING *",
 				&[
 					&starting_at.with_timezone(&Utc),
 					&Interval::from_duration(duration)
 						.ok_or(miette!("could not convert duration to interval"))?,
+					&interaction_token,
 					&[channel],
 				],
 			)
@@ -333,6 +336,8 @@ impl Sprint {
 			})
 			.join("\n");
 
-		Ok(format!("🧮 Sprint `{shortid}`, {duration}, started at {started_at}:\n{summary}"))
+		Ok(format!(
+			"🧮 Sprint `{shortid}`, {duration}, started at {started_at}:\n{summary}"
+		))
 	}
 }

@@ -4,7 +4,10 @@ use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::{
 	application::interaction::Interaction,
 	channel::Channel as DiscordChannel,
-	id::{marker::{ChannelMarker, GuildMarker}, Id},
+	id::{
+		marker::{ChannelMarker, GuildMarker},
+		Id,
+	},
 };
 
 use crate::bot::App;
@@ -41,15 +44,15 @@ impl Mention<Id<ChannelMarker>> for Channel {
 }
 
 impl From<Channel> for Id<ChannelMarker> {
-    fn from(chan: Channel) -> Self {
-        Id::new(chan.0.channel_id as _)
-    }
+	fn from(chan: Channel) -> Self {
+		Id::new(chan.0.channel_id as _)
+	}
 }
 
 impl From<Channel> for Id<GuildMarker> {
-    fn from(chan: Channel) -> Self {
-        Id::new(chan.0.guild_id as _)
-    }
+	fn from(chan: Channel) -> Self {
+		Id::new(chan.0.guild_id as _)
+	}
 }
 
 impl TryFrom<&Interaction> for Channel {

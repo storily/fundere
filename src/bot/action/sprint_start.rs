@@ -2,13 +2,7 @@ use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
 use tracing::debug;
 use twilight_mention::Mention;
-use twilight_model::{
-	application::{
-		component::{button::ButtonStyle, Button, Component},
-		interaction::Interaction,
-	},
-	id::{marker::InteractionMarker, Id},
-};
+use twilight_model::application::component::{button::ButtonStyle, Button, Component};
 use uuid::Uuid;
 
 use crate::{
@@ -20,18 +14,16 @@ use super::{Action, ActionClass, Args, SprintEnd};
 
 #[derive(Debug, Clone)]
 pub struct SprintStart {
-	pub id: Id<InteractionMarker>,
 	pub token: String,
 	pub sprint: Uuid,
 }
 
 impl SprintStart {
-	#[tracing::instrument(name = "SprintStart", skip(interaction))]
-	pub fn new(interaction: &Interaction, sprint: Uuid) -> Action {
+	#[tracing::instrument(name = "SprintStart")]
+	pub fn new(sprint: &Sprint) -> Action {
 		ActionClass::SprintStart(Self {
-			id: interaction.id,
-			token: interaction.token.clone(),
-			sprint,
+			token: sprint.interaction_token.clone(),
+			sprint: sprint.id,
 		})
 		.into()
 	}
@@ -73,11 +65,8 @@ impl SprintStart {
 
 		if let Ok(ending_in) = sprint.ending_in().to_std() {
 			debug!("set up sprint end timer");
-			app.send_timer(Timer::new_after(
-				ending_in,
-				SprintEnd::new(self.id, &self.token, sprint.id),
-			)?)
-			.await?;
+			app.send_timer(Timer::new_after(ending_in, SprintEnd::new(&sprint))?)
+				.await?;
 		} else {
 			return Err(miette!("sprint ended before it began???"));
 		}

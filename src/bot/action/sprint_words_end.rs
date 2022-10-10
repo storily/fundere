@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::{
 	bot::utils::action_row,
-	db::{sprint::Sprint, member::Member},
+	db::{member::Member, sprint::Sprint},
 };
 
 use super::{Action, ActionClass, Args};

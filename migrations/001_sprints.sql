@@ -18,6 +18,7 @@ CREATE TABLE sprints (
 	duration interval not null,
 
 	status sprint_status not null default 'Initial',
+	interaction_token text not null,
 	channels channel[] not null default '{}',
 
 	unique (shortid)

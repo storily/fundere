@@ -155,22 +155,18 @@ pub async fn load_from_db(app: App) -> Result<()> {
 			.await?
 		{
 			need_summarying += 1;
-
-			let text = sprint.summary_text(app.clone()).await?;
-			for chan in &sprint.channels {
-				app.client
-					.create_message((*chan).into())
-					.content(&text)
-					.into_diagnostic()?
-					.exec()
-					.await
-					.into_diagnostic()?;
-			}
-			sprint.update_status(app.clone(), SprintStatus::Summaried).await?;
+			app.send_action(SprintSummary::new_from_db(app.clone(), sprint).await?)
+				.await?;
 		}
 	}
 
 	let current = Sprint::get_all_current(app.clone()).await?;
+
+	let mut rescheduled = 0;
+	for sprint in current {
+		//
+	}
+
 	// those created but not announced
 	// those before the warn
 	// those after the warn but before the start that haven't been warned
@@ -215,10 +211,18 @@ async fn sprint_new(
 	let member = Member::try_from(interaction)?;
 
 	debug!(%starting, %duration, ?channel, ?member, "recording sprint");
-	let sprint = Sprint::create(app.clone(), starting, duration, channel, member).await?;
+	let sprint = Sprint::create(
+		app.clone(),
+		starting,
+		duration,
+		&interaction.token,
+		channel,
+		member,
+	)
+	.await?;
 
 	app.send_action(
-		SprintAnnounce::new(app.clone(), &interaction, sprint)
+		SprintAnnounce::with_interaction(app.clone(), &interaction, sprint)
 			.await
 			.wrap_err("rendering announce")?,
 	)

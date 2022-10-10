@@ -3,13 +3,7 @@ use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
 use twilight_mention::Mention;
-use twilight_model::{
-	application::{
-		component::{button::ButtonStyle, Button, Component},
-		interaction::Interaction,
-	},
-	id::{marker::InteractionMarker, Id},
-};
+use twilight_model::application::component::{button::ButtonStyle, Button, Component};
 use uuid::Uuid;
 
 use crate::{
@@ -21,18 +15,16 @@ use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
 pub struct SprintWarning {
-	pub id: Id<InteractionMarker>,
 	pub token: String,
 	pub sprint: Uuid,
 }
 
 impl SprintWarning {
-	#[tracing::instrument(name = "SprintWarning", skip(interaction))]
-	pub fn new(interaction: &Interaction, sprint: Uuid) -> Action {
+	#[tracing::instrument(name = "SprintWarning")]
+	pub fn new(sprint: &Sprint) -> Action {
 		ActionClass::SprintWarning(Self {
-			id: interaction.id,
-			token: interaction.token.clone(),
-			sprint,
+			token: sprint.interaction_token.clone(),
+			sprint: sprint.id,
 		})
 		.into()
 	}
