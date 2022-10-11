@@ -9,7 +9,7 @@ use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::id::{marker::UserMarker, Id};
 use uuid::Uuid;
 
-use crate::bot::App;
+use crate::bot::{utils::time::ChronoDurationSaturatingSub, App};
 
 use super::{channel::Channel, member::Member};
 
@@ -294,6 +294,10 @@ impl Sprint {
 	pub fn starting_in(&self) -> Duration {
 		let now = Utc::now();
 		self.starting_at - now
+	}
+
+	pub fn warning_in(&self) -> Duration {
+		self.starting_in().saturating_sub(Duration::seconds(30))
 	}
 
 	pub fn ending_at(&self) -> DateTime<Utc> {

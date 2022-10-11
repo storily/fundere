@@ -68,11 +68,15 @@ impl SprintAnnounce {
 			.update_status(app.clone(), SprintStatus::Announced)
 			.await?;
 
-		let warning_in = starting_in.saturating_sub_std(Duration::seconds(30));
+		let warning_in = sprint.warning_in();
 		if !warning_in.is_zero() {
 			debug!("set up sprint warn timer");
-			app.send_timer(Timer::new_after(warning_in, SprintWarning::new(&sprint))?)
-				.await?;
+			app.send_timer(Timer::new_after(
+				// UNWRAP: warning_in uses saturating_sub, will never be negative
+				warning_in.to_std().unwrap(),
+				SprintWarning::new(&sprint),
+			)?)
+			.await?;
 		}
 
 		debug!("set up sprint start timer");
@@ -85,12 +89,8 @@ impl SprintAnnounce {
 		Ok(content)
 	}
 
-	#[tracing::instrument(name = "SprintAnnounce::with_interaction", skip(app, interaction))]
-	pub async fn with_interaction(
-		app: App,
-		interaction: &Interaction,
-		sprint: Sprint,
-	) -> Result<Action> {
+	#[tracing::instrument(name = "SprintAnnounce", skip(app, interaction))]
+	pub async fn new(app: App, interaction: &Interaction, sprint: Sprint) -> Result<Action> {
 		Ok(ActionClass::SprintAnnounce(Self {
 			id: Some(interaction.id),
 			token: interaction.token.clone(),
@@ -100,8 +100,8 @@ impl SprintAnnounce {
 		.into())
 	}
 
-	#[tracing::instrument(name = "SprintAnnounce::with_db_token", skip(app))]
-	pub async fn with_db_token(app: App, sprint: Sprint) -> Result<Action> {
+	#[tracing::instrument(name = "SprintAnnounce::new_from_db", skip(app))]
+	pub async fn new_from_db(app: App, sprint: Sprint) -> Result<Action> {
 		Ok(ActionClass::SprintAnnounce(Self {
 			id: None,
 			token: sprint.interaction_token.clone(),

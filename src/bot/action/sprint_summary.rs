@@ -38,7 +38,7 @@ impl SprintSummary {
 		.into())
 	}
 
-	#[tracing::instrument(name = "SprintSummary::followup", skip(app))]
+	#[tracing::instrument(name = "SprintSummary::new_from_db", skip(app))]
 	pub async fn new_from_db(app: App, sprint: Sprint) -> Result<Action> {
 		sprint
 			.update_status(app.clone(), SprintStatus::Summaried)

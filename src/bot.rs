@@ -18,11 +18,11 @@ pub(crate) use context::App;
 
 use self::{action::CommandError, context::Timer};
 
-mod action;
-mod calc;
-mod context;
-mod sprint;
-mod utils;
+pub mod action;
+pub mod calc;
+pub mod context;
+pub mod sprint;
+pub mod utils;
 
 pub async fn start(config: Config) -> Result<()> {
 	let (db, db_task) = config.db.connect().await?;

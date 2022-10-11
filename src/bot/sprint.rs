@@ -19,7 +19,10 @@ use uuid::Uuid;
 
 use crate::{
 	bot::{
-		action::{SprintAnnounce, SprintCancelled, SprintJoined},
+		action::{
+			SprintAnnounce, SprintCancelled, SprintEnd, SprintJoined, SprintStart, SprintWarning,
+		},
+		context::Timer,
 		utils::{
 			command::{get_integer, get_string},
 			time::parse_when_relative_to,
@@ -163,20 +166,57 @@ pub async fn load_from_db(app: App) -> Result<()> {
 	let current = Sprint::get_all_current(app.clone()).await?;
 
 	let mut rescheduled = 0;
+	let mut actioned_late = 0;
 	for sprint in current {
-		//
+		match sprint.status {
+			SprintStatus::Initial => {
+				actioned_late += 1;
+				app.send_action(SprintAnnounce::new_from_db(app.clone(), sprint).await?)
+					.await?;
+			}
+			SprintStatus::Announced => {
+				// UNWRAP: warning_in uses saturating_sub, will never be negative
+				let warning_in = sprint.warning_in().to_std().unwrap();
+				if warning_in.is_zero() {
+					let starting_in = sprint.starting_in();
+					if starting_in > Duration::seconds(2) {
+						actioned_late += 1;
+						app.send_action(SprintWarning::new(&sprint)).await?;
+					} else if let Ok(starting_in) = starting_in.to_std() {
+						// implicitly checks that starting_in >= zero
+						rescheduled += 1;
+						app.send_timer(Timer::new_after(starting_in, SprintStart::new(&sprint))?)
+							.await?;
+					} else {
+						actioned_late += 1;
+						app.send_action(SprintStart::new(&sprint)).await?;
+					}
+				} else {
+					rescheduled += 1;
+					app.send_timer(Timer::new_after(warning_in, SprintWarning::new(&sprint))?)
+						.await?;
+				}
+			}
+			SprintStatus::Started => {
+				if let Ok(ending_in) = sprint.ending_in().to_std() {
+					// implicitly checks that ending_in >= zero
+					rescheduled += 1;
+					app.send_timer(Timer::new_after(ending_in, SprintEnd::new(&sprint))?)
+						.await?;
+				} else {
+					warn!("sprint in init loaded from sprints_current that is started but is beyond end");
+					actioned_late += 1;
+					app.send_action(SprintEnd::new(&sprint)).await?;
+				}
+			}
+			_ => warn!(?sprint, "unhandled case of sprint loaded from db"),
+		}
 	}
-
-	// those created but not announced
-	// those before the warn
-	// those after the warn but before the start that haven't been warned
-	// those before the start that have been warned
-	// those after the start that haven't been started
 
 	// + other query/view:
 	// those after the end that haven't been ended
 
-	info!(%need_summarying, "loaded sprints from db");
+	info!(%need_summarying, %actioned_late, %rescheduled, "loaded sprints from db");
 
 	Ok(())
 }
@@ -222,7 +262,7 @@ async fn sprint_new(
 	.await?;
 
 	app.send_action(
-		SprintAnnounce::with_interaction(app.clone(), &interaction, sprint)
+		SprintAnnounce::new(app.clone(), &interaction, sprint)
 			.await
 			.wrap_err("rendering announce")?,
 	)
