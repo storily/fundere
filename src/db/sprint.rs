@@ -336,8 +336,7 @@ impl Sprint {
 			let name = member.nick.unwrap_or_else(|| member.user.name);
 			let words = p
 				.words_end
-				.and_then(|end| p.words_start.map(|start| end - start))
-				.unwrap_or(0);
+				.map_or(0, |end| end - p.words_start.unwrap_or(0));
 			let wpm = (words as f64) / (minutes as f64);
 			summaries.push((name, words, wpm));
 		}
