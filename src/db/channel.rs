@@ -1,5 +1,7 @@
+use std::error::Error;
+
 use miette::{miette, IntoDiagnostic, Report, Result};
-use postgres_types::{FromSql, ToSql};
+use postgres_types::{FromSql, Kind, ToSql, Type};
 use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::{
 	application::interaction::Interaction,
@@ -19,9 +21,43 @@ struct ChannelInner {
 	pub channel_id: i64,
 }
 
-#[derive(Debug, Clone, Copy, ToSql, FromSql)]
+#[derive(Debug, Clone, Copy, ToSql)]
 #[postgres(name = "channel")]
 pub struct Channel(ChannelInner);
+
+impl<'a> FromSql<'a> for Channel {
+	// Working around a buggy FromSql derive which didn't unwrap the inner type of
+	// the domain before passing it to ChannelInner.
+	fn from_sql(
+		outer_type: &Type,
+		buf: &'a [u8],
+	) -> std::result::Result<Channel, Box<dyn Error + Sync + Send>> {
+		ChannelInner::from_sql(
+			match outer_type.kind() {
+				Kind::Domain(domain) => domain,
+				_ => unreachable!("assumption: channel is a domain"),
+			},
+			buf,
+		)
+		.map(Self)
+	}
+
+	// This is just copy-pasted from the derive expansion.
+	fn accepts(outer_type: &Type) -> bool {
+		if <ChannelInner as FromSql>::accepts(outer_type) {
+			return true;
+		}
+
+		if outer_type.name() != "channel" {
+			return false;
+		}
+
+		match outer_type.kind() {
+			Kind::Domain(inner_type) => <ChannelInner as FromSql>::accepts(inner_type),
+			_ => false,
+		}
+	}
+}
 
 impl Channel {
 	#[allow(dead_code)]
