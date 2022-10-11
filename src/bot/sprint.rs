@@ -55,7 +55,7 @@ pub fn command() -> Result<Command> {
 		.required(true);
 		let duration = IntegerBuilder::new(
 			"duration",
-			"Duration of the sprint in minutes (defaults to 15)",
+			"Duration of the sprint in minutes (defaults to 20)",
 		);
 		SubCommandBuilder::new("new", "Schedule a new sprint")
 			.option(when)
@@ -230,7 +230,7 @@ async fn sprint_new(
 	interaction: &Interaction,
 	options: &[CommandDataOption],
 ) -> Result<()> {
-	let duration = get_integer(options, "duration").unwrap_or(15);
+	let duration = get_integer(options, "duration").unwrap_or(20);
 	if duration <= 0 {
 		return Err(miette!("duration must be positive"));
 	}
