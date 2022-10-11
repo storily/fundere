@@ -144,6 +144,16 @@ impl Sprint {
 	}
 
 	#[tracing::instrument(skip(app))]
+	pub async fn get_all_finished_but_not_ended(app: App) -> Result<Vec<Self>> {
+		app.db
+			.query("SELECT * FROM sprints_finished_but_not_ended", &[])
+			.await
+			.into_diagnostic()
+			.and_then(|rows| rows.into_iter().map(Self::from_row).collect())
+			.wrap_err("db: get sprints that are finished but not ended (nor summaried)")
+	}
+
+	#[tracing::instrument(skip(app))]
 	pub async fn get_all_finished_but_not_summaried(app: App) -> Result<Vec<Self>> {
 		app.db
 			.query("SELECT * FROM sprints_finished_but_not_summaried", &[])

@@ -163,6 +163,13 @@ pub async fn load_from_db(app: App) -> Result<()> {
 		}
 	}
 
+	let ended_but_we_are_late = Sprint::get_all_finished_but_not_ended(app.clone()).await?;
+	let mut ended_late = 0;
+	for sprint in ended_but_we_are_late {
+		ended_late += 1;
+		app.send_action(SprintEnd::new(&sprint)).await?;
+	}
+
 	let current = Sprint::get_all_current(app.clone()).await?;
 
 	let mut rescheduled = 0;
@@ -213,10 +220,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 		}
 	}
 
-	// + other query/view:
-	// those after the end that haven't been ended
-
-	info!(%need_summarying, %actioned_late, %rescheduled, "loaded sprints from db");
+	info!(%actioned_late, %rescheduled, %ended_late, %need_summarying, "loaded sprints from db");
 
 	Ok(())
 }

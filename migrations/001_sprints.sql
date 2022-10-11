@@ -52,6 +52,17 @@ CREATE VIEW sprints_current AS
 	GROUP BY sprints.id
 	HAVING count(sprint_participants.*) > 0;
 
+CREATE VIEW sprints_finished_but_not_ended AS
+	SELECT sprints.*
+	FROM sprints
+	LEFT JOIN sprint_participants ON sprints.id = sprint_participants.sprint_id
+	WHERE true
+		AND sprints.cancelled_at IS NULL
+		AND sprints.starting_at + sprints.duration <= current_timestamp
+		AND sprints.status NOT IN ('Ended', 'Summaried')
+	GROUP BY sprints.id
+	HAVING count(sprint_participants.*) > 0;
+
 CREATE VIEW sprints_finished_but_not_summaried AS
 	SELECT sprints.*
 	FROM sprints
