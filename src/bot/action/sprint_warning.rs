@@ -7,7 +7,7 @@ use twilight_model::application::component::{button::ButtonStyle, Button, Compon
 use uuid::Uuid;
 
 use crate::{
-	bot::utils::action_row,
+	bot::utils::{action_row, time::round_duration_to_seconds},
 	db::sprint::{Sprint, SprintStatus},
 };
 
@@ -50,12 +50,10 @@ impl SprintWarning {
 		let starting_in = if starting_in <= Duration::zero() {
 			"now".into()
 		} else {
-			format_duration(
-				starting_in
-					.to_std()
-					.expect("starting_in is always above zero"),
+			format!(
+				"in {}",
+				format_duration(round_duration_to_seconds(starting_in))
 			)
-			.to_string()
 		};
 
 		let participant_list = sprint
@@ -66,7 +64,7 @@ impl SprintWarning {
 			.join(", ");
 
 		let content = format!(
-			"⏱️ Sprint `{shortid}` is starting in {starting_in} for {duration}! // {participant_list}"
+			"⏱️ Sprint `{shortid}` is starting {starting_in} for {duration}! // {participant_list}"
 		);
 		// TODO: ding
 

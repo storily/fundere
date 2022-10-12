@@ -32,6 +32,10 @@ impl ChronoDurationSaturatingSub for Duration {
 	}
 }
 
+pub fn round_duration_to_seconds(duration: Duration) -> std::time::Duration {
+	std::time::Duration::from_secs(duration.num_milliseconds().max(0) as u64 / 1000)
+}
+
 pub fn parse_when_relative_to(now: NaiveTime, s: &str) -> Result<NaiveTime> {
 	if s.to_ascii_lowercase() == "now" {
 		return Ok(now);

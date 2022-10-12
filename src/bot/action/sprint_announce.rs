@@ -16,7 +16,10 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		context::Timer,
-		utils::{action_row, time::ChronoDurationSaturatingSub},
+		utils::{
+			action_row,
+			time::{round_duration_to_seconds, ChronoDurationSaturatingSub},
+		},
 		App,
 	},
 	db::sprint::{Sprint, SprintStatus},
@@ -52,11 +55,7 @@ impl SprintAnnounce {
 		} else {
 			format!(
 				"in {}",
-				format_duration(
-					starting_in
-						.to_std()
-						.expect("starting_in is always above zero"),
-				)
+				format_duration(round_duration_to_seconds(starting_in))
 			)
 		};
 

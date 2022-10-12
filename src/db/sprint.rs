@@ -9,7 +9,10 @@ use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::id::{marker::UserMarker, Id};
 use uuid::Uuid;
 
-use crate::bot::{utils::time::ChronoDurationSaturatingSub, App};
+use crate::bot::{
+	utils::time::{round_duration_to_seconds, ChronoDurationSaturatingSub},
+	App,
+};
 
 use super::{channel::Channel, member::Member};
 
@@ -290,15 +293,7 @@ impl Sprint {
 	/// Formatted duration, excluding sign
 	pub fn formatted_duration(&self) -> FormattedDuration {
 		let duration = self.duration();
-		format_duration(
-			if duration < Duration::zero() {
-				duration * -1
-			} else {
-				duration
-			}
-			.to_std()
-			.expect("duration is always positive or zero"),
-		)
+		format_duration(round_duration_to_seconds(duration))
 	}
 
 	pub fn starting_in(&self) -> Duration {
@@ -345,7 +340,10 @@ impl Sprint {
 		let summary = summaries
 			.into_iter()
 			.map(|(name, words, wpm)| {
-				format!("_{name}_: **{words}** words (**{wpm:.1}** words per minute)", name = name.replace('_', "\\_"))
+				format!(
+					"_{name}_: **{words}** words (**{wpm:.1}** words per minute)",
+					name = name.replace('_', "\\_")
+				)
 			})
 			.join("\n");
 
