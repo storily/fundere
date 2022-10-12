@@ -345,7 +345,7 @@ impl Sprint {
 		let summary = summaries
 			.into_iter()
 			.map(|(name, words, wpm)| {
-				format!("_{name}_: **{words}** words (**{wpm:.1}** words per minute)")
+				format!("_{name}_: **{words}** words (**{wpm:.1}** words per minute)", name = name.replace('_', "\\_"))
 			})
 			.join("\n");
 
