@@ -31,13 +31,11 @@ impl SprintCancelled {
 	pub async fn handle(
 		self,
 		Args {
-			interaction_client,
-			as_followup,
-			..
-		}: Args<'_>,
+			app, as_followup, ..
+		}: Args,
 	) -> Result<()> {
 		if as_followup {
-			interaction_client
+			app.interaction_client()
 				.create_followup(&self.token)
 				.content(&self.content)
 				.into_diagnostic()?
@@ -46,7 +44,7 @@ impl SprintCancelled {
 				.into_diagnostic()
 				.map(drop)
 		} else {
-			interaction_client
+			app.interaction_client()
 				.create_response(
 					self.id,
 					&self.token,

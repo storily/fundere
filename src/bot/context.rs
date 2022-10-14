@@ -10,7 +10,8 @@ use tokio::{
 	time::{sleep_until, Instant as TokioInstant, Sleep},
 };
 use tokio_postgres::Client as PgClient;
-use twilight_http::Client;
+use twilight_http::{client::InteractionClient, Client};
+use twilight_model::id::Id;
 
 use super::action::Action;
 use crate::config::Config;
@@ -32,10 +33,10 @@ impl App {
 	pub fn new(
 		config: Config,
 		db: PgClient,
-		client: Client,
 		control: Sender<Action>,
 		timer: Sender<Timer>,
 	) -> Self {
+		let client = Client::new(config.discord.token.clone());
 		Self(Arc::new(AppContext {
 			config,
 			db,
@@ -43,6 +44,11 @@ impl App {
 			control,
 			timer,
 		}))
+	}
+
+	pub fn interaction_client(&self) -> InteractionClient<'_> {
+		let application_id = Id::new(self.config.discord.app_id);
+		self.client.interaction(application_id)
 	}
 
 	pub async fn send_action(&self, action: Action) -> Result<()> {

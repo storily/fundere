@@ -29,14 +29,7 @@ impl SprintWarning {
 		.into()
 	}
 
-	pub async fn handle(
-		self,
-		Args {
-			app,
-			interaction_client,
-			..
-		}: Args<'_>,
-	) -> Result<()> {
+	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
 		if sprint.status >= SprintStatus::Started {
 			return Err(miette!(
@@ -68,7 +61,7 @@ impl SprintWarning {
 		);
 		// TODO: ding
 
-		interaction_client
+		app.interaction_client()
 			.create_followup(&self.token)
 			.content(&content)
 			.into_diagnostic()?

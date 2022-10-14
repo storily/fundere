@@ -22,13 +22,8 @@ impl CommandAck {
 		.into()
 	}
 
-	pub async fn handle(
-		self,
-		Args {
-			interaction_client, ..
-		}: Args<'_>,
-	) -> Result<()> {
-		interaction_client
+	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
+		app.interaction_client()
 			.create_response(
 				self.id,
 				&self.token,

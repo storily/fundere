@@ -1,5 +1,4 @@
 use miette::Result;
-use twilight_http::client::InteractionClient;
 
 pub use self::calc_result::CalcResult;
 pub use self::command_ack::CommandAck;
@@ -43,12 +42,12 @@ impl Action {
 		self
 	}
 
-	pub async fn handle(self, app: App, interaction_client: &InteractionClient<'_>) -> Result<()> {
+	pub async fn handle(self, app: App) -> Result<()> {
 		let args = Args {
 			app,
-			interaction_client,
 			as_followup: self.as_followup,
 		};
+
 		use ActionClass::*;
 		match self.class {
 			CalcResult(data) => data.handle(args).await,
@@ -69,9 +68,8 @@ impl Action {
 }
 
 #[derive(Debug)]
-pub struct Args<'a> {
+pub struct Args {
 	pub app: App,
-	pub interaction_client: &'a InteractionClient<'a>,
 
 	/// Hint that the interaction should be handled as a followup instead of a response.
 	pub as_followup: bool,

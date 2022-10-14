@@ -37,14 +37,7 @@ impl SprintWordsStart {
 		.into()
 	}
 
-	pub async fn handle(
-		self,
-		Args {
-			app,
-			interaction_client,
-			..
-		}: Args<'_>,
-	) -> Result<()> {
+	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		let sprint = Sprint::get(app.clone(), self.sprint).await?;
 		if sprint.is_cancelled() {
 			return Err(miette!("Can't set starting words on a cancelled sprint."));
@@ -53,7 +46,7 @@ impl SprintWordsStart {
 		let Sprint { id, shortid, .. } = sprint;
 		let participant = sprint.participant(app.clone(), self.member).await?;
 
-		interaction_client
+		app.interaction_client()
 			.create_response(
 				self.id,
 				&self.token,

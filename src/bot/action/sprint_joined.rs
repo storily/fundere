@@ -35,16 +35,11 @@ impl SprintJoined {
 		.into()
 	}
 
-	pub async fn handle(
-		self,
-		Args {
-			interaction_client, ..
-		}: Args<'_>,
-	) -> Result<()> {
+	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		let Self {
 			sprint_id, shortid, ..
 		} = self;
-		interaction_client
+		app.interaction_client()
 			.create_response(
 				self.id,
 				&self.token,

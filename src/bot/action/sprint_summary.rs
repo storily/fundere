@@ -56,13 +56,11 @@ impl SprintSummary {
 	pub async fn handle(
 		self,
 		Args {
-			interaction_client,
-			as_followup,
-			..
-		}: Args<'_>,
+			app, as_followup, ..
+		}: Args,
 	) -> Result<()> {
 		if as_followup {
-			interaction_client
+			app.interaction_client()
 				.create_followup(&self.token)
 				.content(&self.content)
 				.into_diagnostic()?
@@ -71,7 +69,7 @@ impl SprintSummary {
 				.into_diagnostic()
 				.map(drop)
 		} else if let Some(interaction_id) = self.id {
-			interaction_client
+			app.interaction_client()
 				.create_response(
 					interaction_id,
 					&self.token,

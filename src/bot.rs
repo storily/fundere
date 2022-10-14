@@ -6,11 +6,9 @@ use tokio::{
 };
 use tracing::{debug, error, info, warn};
 use twilight_gateway::Shard;
-use twilight_http::Client;
 use twilight_model::{
 	application::interaction::{Interaction, InteractionData},
 	gateway::event::Event,
-	id::Id,
 };
 
 use crate::config::Config;
@@ -27,10 +25,9 @@ pub mod utils;
 pub async fn start(config: Config) -> Result<()> {
 	let (db, db_task) = config.db.connect().await?;
 
-	let client = Client::new(config.discord.token.clone());
 	let (control, actions) = mpsc::channel(config.internal.control_buffer);
 	let (timer, timings) = mpsc::channel(config.internal.timer_buffer);
-	let app = App::new(config, db, client, control, timer);
+	let app = App::new(config, db, control, timer);
 
 	let querying = spawn(async {
 		info!("starting db worker");
@@ -61,24 +58,23 @@ pub async fn start(config: Config) -> Result<()> {
 
 #[tracing::instrument(skip_all)]
 async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<()> {
-	let client = Client::new(app.config.discord.token.clone());
-	let application_id = Id::new(app.config.discord.app_id);
+	{
+		let interaction_client = app.interaction_client();
 
-	let interaction_client = client.interaction(application_id);
-
-	info!("register commands: calc, sprint");
-	interaction_client
-		.set_global_commands(&[calc::command()?, sprint::command()?])
-		.exec()
-		.await
-		.into_diagnostic()?;
+		info!("register commands: calc, sprint");
+		interaction_client
+			.set_global_commands(&[calc::command()?, sprint::command()?])
+			.exec()
+			.await
+			.into_diagnostic()?;
+	}
 
 	info!("wait for actions");
 	while let Some(action) = actions.recv().await {
 		debug!(?action, "action received at controller");
 		let action_dbg = format!("action: {action:?}");
 		action
-			.handle(app.clone(), &interaction_client)
+			.handle(app.clone())
 			.await
 			.wrap_err(action_dbg)
 			.unwrap_or_else(|err| error!("{err:?}"));

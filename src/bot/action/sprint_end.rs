@@ -27,14 +27,7 @@ impl SprintEnd {
 		.into()
 	}
 
-	pub async fn handle(
-		self,
-		Args {
-			app,
-			interaction_client,
-			..
-		}: Args<'_>,
-	) -> Result<()> {
+	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		let sprint = Sprint::get(app.clone(), self.sprint).await?;
 		if sprint.status >= SprintStatus::Ended {
 			return Err(miette!("Bug: went to end sprint but it was already"));
@@ -55,7 +48,7 @@ impl SprintEnd {
 			.update_status(app.clone(), SprintStatus::Ended)
 			.await?;
 
-		interaction_client
+		app.interaction_client()
 			.create_followup(&self.token)
 			.content(&content)
 			.into_diagnostic()?
