@@ -256,18 +256,12 @@ impl From<ConfigChannelBinding> for ChannelBinding {
 
 #[derive(Debug, Clone, knuffel::Decode)]
 pub struct InternalConfig {
-	#[knuffel(child, unwrap(argument), default = Self::default().control_buffer)]
-	pub control_buffer: usize,
-
-	#[knuffel(child, unwrap(argument), default = Self::default().control_buffer)]
+	#[knuffel(child, unwrap(argument), default = Self::default().timer_buffer)]
 	pub timer_buffer: usize,
 }
 
 impl Default for InternalConfig {
 	fn default() -> Self {
-		Self {
-			control_buffer: 64,
-			timer_buffer: 16,
-		}
+		Self { timer_buffer: 16 }
 	}
 }

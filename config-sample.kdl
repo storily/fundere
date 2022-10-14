@@ -48,12 +48,8 @@ db {
 
 // reference for internal settings, values are defaults
 /-internal {
-	// The size of the buffer used to send action messages to the Discord client
-	// controller. 64 is a reasonable value for general use.
-	control-buffer 64
-
 	// The size of the buffer used to pass around timers in the application.
 	// This is a relatively infrequent operation and the receiver will most
-	// often be idle, so a much smaller value than control is appropriate.
+	// often be idle.
 	timer-buffer 16
 }
