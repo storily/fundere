@@ -1,6 +1,7 @@
 use futures_util::{FutureExt, StreamExt};
 use miette::{Context, IntoDiagnostic, Report, Result};
 use tokio::{
+	signal,
 	sync::mpsc::{self, Receiver},
 	task::{spawn, JoinSet},
 };
@@ -25,39 +26,14 @@ pub mod utils;
 pub async fn start(config: Config) -> Result<()> {
 	let (db, db_task) = config.db.connect().await?;
 
-	let (control, actions) = mpsc::channel(config.internal.control_buffer);
 	let (timer, timings) = mpsc::channel(config.internal.timer_buffer);
-	let app = App::new(config, db, control, timer);
+	let app = App::new(config, db, timer);
 
 	let querying = spawn(async {
 		info!("starting db worker");
 		db_task.await.into_diagnostic()
 	});
 
-	let ticking = spawn(ticker(app.clone(), timings));
-	let listening = spawn(listener(app.clone()));
-	let controlling = spawn(controller(app.clone(), actions));
-
-	let initing = spawn(async {
-		sprint::load_from_db(app).await?;
-		Ok::<_, Report>(())
-	});
-
-	initing.await.into_diagnostic()??;
-	info!("init has finished, good sailing!");
-
-	controlling.await.into_diagnostic()??;
-	info!("controller has finished, cancelling other tasks");
-	listening.abort();
-	ticking.abort();
-	querying.abort();
-
-	info!("show's over, goodbye");
-	Ok(())
-}
-
-#[tracing::instrument(skip_all)]
-async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<()> {
 	{
 		let interaction_client = app.interaction_client();
 
@@ -69,17 +45,24 @@ async fn controller(app: App, mut actions: Receiver<action::Action>) -> Result<(
 			.into_diagnostic()?;
 	}
 
-	info!("wait for actions");
-	while let Some(action) = actions.recv().await {
-		debug!(?action, "action received at controller");
-		let action_dbg = format!("action: {action:?}");
-		action
-			.handle(app.clone())
-			.await
-			.wrap_err(action_dbg)
-			.unwrap_or_else(|err| error!("{err:?}"));
-	}
+	let ticking = spawn(ticker(app.clone(), timings));
+	let listening = spawn(listener(app.clone()));
 
+	let initing = spawn(async {
+		sprint::load_from_db(app).await?;
+		Ok::<_, Report>(())
+	});
+
+	initing.await.into_diagnostic()??;
+	info!("init has finished, good sailing!");
+
+	signal::ctrl_c().await.into_diagnostic()?;
+	info!("ctrl-c received, shutting down");
+	listening.abort();
+	ticking.abort();
+	querying.abort();
+
+	info!("show's over, goodbye");
 	Ok(())
 }
 
@@ -141,9 +124,7 @@ async fn ticker(app: App, mut timings: Receiver<Timer>) -> Result<()> {
 						}
 						Some(Ok(payload)) => {
 							info!(?payload, "timer has finished, executing");
-							app.send_action(payload).await.unwrap_or_else(|err| {
-								error!(%err, "sending timer payload failed");
-							});
+							app.do_action(payload).await.unwrap_or_else(|err| error!("{err:?}"));
 						}
 					}
 				}
@@ -228,7 +209,7 @@ async fn handle_interaction_error(
 	task: impl std::future::Future<Output = Result<()>>,
 ) -> Result<()> {
 	if let Err(err) = task.await {
-		app.send_action(CommandError::new(interaction, err)?).await
+		app.do_action(CommandError::new(interaction, err)?).await
 	} else {
 		Ok(())
 	}

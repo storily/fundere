@@ -158,7 +158,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 			.await?
 		{
 			need_summarying += 1;
-			app.send_action(SprintSummary::new_from_db(app.clone(), sprint).await?)
+			app.do_action(SprintSummary::new_from_db(app.clone(), sprint).await?)
 				.await?;
 		}
 	}
@@ -167,7 +167,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 	let mut ended_late = 0;
 	for sprint in ended_but_we_are_late {
 		ended_late += 1;
-		app.send_action(SprintEnd::new(&sprint)).await?;
+		app.do_action(SprintEnd::new(&sprint)).await?;
 	}
 
 	let current = Sprint::get_all_current(app.clone()).await?;
@@ -178,7 +178,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 		match sprint.status {
 			SprintStatus::Initial => {
 				actioned_late += 1;
-				app.send_action(SprintAnnounce::new_from_db(app.clone(), sprint).await?)
+				app.do_action(SprintAnnounce::new_from_db(app.clone(), sprint).await?)
 					.await?;
 			}
 			SprintStatus::Announced => {
@@ -188,7 +188,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 					let starting_in = sprint.starting_in();
 					if starting_in > Duration::seconds(2) {
 						actioned_late += 1;
-						app.send_action(SprintWarning::new(&sprint)).await?;
+						app.do_action(SprintWarning::new(&sprint)).await?;
 					} else if let Ok(starting_in) = starting_in.to_std() {
 						// implicitly checks that starting_in >= zero
 						rescheduled += 1;
@@ -196,7 +196,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 							.await?;
 					} else {
 						actioned_late += 1;
-						app.send_action(SprintStart::new(&sprint)).await?;
+						app.do_action(SprintStart::new(&sprint)).await?;
 					}
 				} else {
 					rescheduled += 1;
@@ -213,7 +213,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 				} else {
 					warn!("sprint in init loaded from sprints_current that is started but is beyond end");
 					actioned_late += 1;
-					app.send_action(SprintEnd::new(&sprint)).await?;
+					app.do_action(SprintEnd::new(&sprint)).await?;
 				}
 			}
 			_ => warn!(?sprint, "unhandled case of sprint loaded from db"),
@@ -265,7 +265,7 @@ async fn sprint_new(
 	)
 	.await?;
 
-	app.send_action(
+	app.do_action(
 		SprintAnnounce::new(app.clone(), &interaction, sprint)
 			.await
 			.wrap_err("rendering announce")?,
@@ -288,7 +288,7 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 
 	sprint.join(app.clone(), member).await?;
 
-	app.send_action(SprintJoined::new(&interaction, sprint))
+	app.do_action(SprintJoined::new(&interaction, sprint))
 		.await?;
 
 	Ok(())
@@ -308,7 +308,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 
 	sprint.leave(app.clone(), member).await?;
 
-	app.send_action(SprintLeft::new(&interaction, &sprint))
+	app.do_action(SprintLeft::new(&interaction, &sprint))
 		.await?;
 
 	if sprint.participants(app.clone()).await?.is_empty() {
@@ -319,7 +319,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 			.ok_or(miette!("can only leave sprint from a guild"))?;
 
 		sprint.cancel(app.clone()).await?;
-		app.send_action(SprintCancelled::new(&interaction, sprint.shortid, user).as_followup())
+		app.do_action(SprintCancelled::new(&interaction, sprint.shortid, user).as_followup())
 			.await?;
 	}
 
@@ -344,7 +344,7 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 
 	sprint.cancel(app.clone()).await?;
 
-	app.send_action(SprintCancelled::new(&interaction, sprint.shortid, user))
+	app.do_action(SprintCancelled::new(&interaction, sprint.shortid, user))
 		.await?;
 
 	Ok(())
@@ -361,7 +361,7 @@ async fn sprint_words_start(app: App, interaction: &Interaction, uuid: &str) -> 
 		return Err(miette!("sprint was cancelled"));
 	}
 
-	app.send_action(SprintWordsStart::new(&interaction, sprint.id, member))
+	app.do_action(SprintWordsStart::new(&interaction, sprint.id, member))
 		.await?;
 
 	Ok(())
@@ -378,7 +378,7 @@ async fn sprint_words_end(app: App, interaction: &Interaction, uuid: &str) -> Re
 		return Err(miette!("sprint was cancelled"));
 	}
 
-	app.send_action(SprintWordsEnd::new(&interaction, sprint.id, member))
+	app.do_action(SprintWordsEnd::new(&interaction, sprint.id, member))
 		.await?;
 
 	Ok(())
@@ -425,10 +425,10 @@ async fn sprint_set_words(
 			.all_participants_have_ending_words(app.clone())
 			.await?
 	{
-		app.send_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
+		app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
 			.await?;
 	} else {
-		app.send_action(CommandAck::new(&interaction)).await?;
+		app.do_action(CommandAck::new(&interaction)).await?;
 	}
 
 	Ok(())

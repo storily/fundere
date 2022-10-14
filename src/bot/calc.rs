@@ -45,7 +45,7 @@ pub async fn on_command(
 	let mut context = fend_core::Context::new();
 	let result = fend_core::evaluate(input, &mut context).map_err(|err| miette!("{}", err))?;
 
-	app.send_action(CalcResult::new(
+	app.do_action(CalcResult::new(
 		interaction,
 		input,
 		result.get_main_result(),

@@ -4,7 +4,7 @@ use std::{
 	time::{Duration, Instant},
 };
 
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{miette, Context, IntoDiagnostic, Result};
 use tokio::{
 	sync::mpsc::Sender,
 	time::{sleep_until, Instant as TokioInstant, Sleep},
@@ -25,23 +25,16 @@ pub struct AppContext {
 	pub config: Config,
 	pub db: PgClient,
 	pub client: Client,
-	pub control: Sender<Action>,
 	pub timer: Sender<Timer>,
 }
 
 impl App {
-	pub fn new(
-		config: Config,
-		db: PgClient,
-		control: Sender<Action>,
-		timer: Sender<Timer>,
-	) -> Self {
+	pub fn new(config: Config, db: PgClient, timer: Sender<Timer>) -> Self {
 		let client = Client::new(config.discord.token.clone());
 		Self(Arc::new(AppContext {
 			config,
 			db,
 			client,
-			control,
 			timer,
 		}))
 	}
@@ -51,8 +44,9 @@ impl App {
 		self.client.interaction(application_id)
 	}
 
-	pub async fn send_action(&self, action: Action) -> Result<()> {
-		self.control.send(action).await.into_diagnostic()
+	pub async fn do_action(&self, action: Action) -> Result<()> {
+		let action_dbg = format!("action: {action:?}");
+		action.handle(self.clone()).await.wrap_err(action_dbg)
 	}
 
 	pub async fn send_timer(&self, timing: Timer) -> Result<()> {
