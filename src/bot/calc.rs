@@ -50,6 +50,6 @@ pub async fn on_command(
 		input,
 		result.get_main_result(),
 		public,
-	))
+	)?)
 	.await
 }

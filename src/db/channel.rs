@@ -50,8 +50,7 @@ impl TryFrom<Channel> for Id<GuildMarker> {
 	type Error = Report;
 
 	fn try_from(chan: Channel) -> Result<Self> {
-		chan
-			.guild_id
+		chan.guild_id
 			.map(|id| Id::new(id as _))
 			.ok_or_else(|| miette!("channel is not a guild channel"))
 	}
