@@ -1,66 +1,31 @@
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use twilight_mention::Mention;
-use twilight_model::{
-	application::interaction::Interaction,
-	http::interaction::{InteractionResponse, InteractionResponseType},
-	id::{marker::InteractionMarker, Id},
-	user::User,
-};
-use twilight_util::builder::InteractionResponseDataBuilder;
+use twilight_model::{application::interaction::Interaction, user::User};
+
+use crate::bot::context::{GenericResponse, GenericResponseData};
 
 use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
-pub struct SprintCancelled {
-	pub id: Id<InteractionMarker>,
-	pub token: String,
-	pub content: String,
-}
+pub struct SprintCancelled(GenericResponse);
 
 impl SprintCancelled {
 	#[tracing::instrument(name = "SprintCancelled", skip(interaction))]
 	pub fn new(interaction: &Interaction, shortid: i32, user: &User) -> Action {
-		ActionClass::SprintCancelled(Self {
-			id: interaction.id,
-			token: interaction.token.clone(),
-			content: format!("❌ Sprint {shortid} was cancelled by {}", user.id.mention()),
-		})
+		ActionClass::SprintCancelled(Self(GenericResponse::from_interaction(
+			interaction,
+			GenericResponseData {
+				content: Some(format!(
+					"❌ Sprint {shortid} was cancelled by {}",
+					user.id.mention()
+				)),
+				..Default::default()
+			},
+		)))
 		.into()
 	}
 
-	pub async fn handle(
-		self,
-		Args {
-			app, as_followup, ..
-		}: Args,
-	) -> Result<()> {
-		if as_followup {
-			app.interaction_client()
-				.create_followup(&self.token)
-				.content(&self.content)
-				.into_diagnostic()?
-				.exec()
-				.await
-				.into_diagnostic()
-				.map(drop)
-		} else {
-			app.interaction_client()
-				.create_response(
-					self.id,
-					&self.token,
-					&InteractionResponse {
-						kind: InteractionResponseType::ChannelMessageWithSource,
-						data: Some(
-							InteractionResponseDataBuilder::new()
-								.content(self.content)
-								.build(),
-						),
-					},
-				)
-				.exec()
-				.await
-				.into_diagnostic()
-				.map(drop)
-		}
+	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
+		app.send_response(self.0).await.map(drop)
 	}
 }
