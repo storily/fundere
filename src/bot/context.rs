@@ -10,7 +10,7 @@ use tokio::{
 	time::{sleep_until, timeout, Instant as TokioInstant, Sleep},
 };
 use tokio_postgres::Client as PgClient;
-use tracing::debug;
+use tracing::{debug, error};
 use twilight_http::{
 	client::InteractionClient,
 	error::ErrorType,
@@ -64,6 +64,7 @@ impl App {
 
 	pub async fn do_action(&self, action: Action) -> Result<()> {
 		let action_dbg = format!("action: {action:?}");
+		debug!("handling action: {action_dbg}");
 		action.handle(self.clone()).await.wrap_err(action_dbg)
 	}
 
@@ -76,7 +77,10 @@ impl App {
 		let posted_response = if let Some(msg) = response.message {
 			Some(match msg {
 				MessageForm::Discord(msg) => msg,
-				MessageForm::Db(msgid) => self
+				MessageForm::Db(msgid) => {
+					debug!(?msgid, "get message from discord");
+
+					self
 					.client
 					.message(msgid.into(), msgid.into())
 					.exec()
@@ -84,7 +88,8 @@ impl App {
 					.into_diagnostic()?
 					.model()
 					.await
-					.into_diagnostic()?,
+					.into_diagnostic()?
+				},
 			})
 		} else if let Some(token) = &response.token {
 			debug!("check if response already sent");
@@ -143,6 +148,7 @@ impl App {
 		}
 
 		if let Some(channel) = response.channel {
+			debug!("posting to channel");
 			response
 				.data
 				.incept_message(self.client.create_message(channel))?
@@ -155,6 +161,7 @@ impl App {
 				.into_diagnostic()
 				.wrap_err("message response")
 		} else {
+			error!("no channel to post to");
 			Err(miette!("cannot post response, possibly a bug?"))
 		}
 	}
