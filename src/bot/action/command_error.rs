@@ -3,7 +3,10 @@ use std::iter::repeat;
 use miette::{GraphicalReportHandler, GraphicalTheme, IntoDiagnostic, Report, Result};
 use twilight_model::{
 	application::interaction::Interaction,
-	id::{marker::InteractionMarker, Id},
+	id::{
+		marker::{ChannelMarker, InteractionMarker},
+		Id,
+	},
 };
 use twilight_util::builder::embed::EmbedBuilder;
 
@@ -15,6 +18,7 @@ use super::{Action, ActionClass, Args};
 pub struct CommandError {
 	pub id: Id<InteractionMarker>,
 	pub token: String,
+	pub channel: Option<Id<ChannelMarker>>,
 	pub error: String,
 }
 
@@ -30,6 +34,7 @@ impl CommandError {
 		Ok(ActionClass::CommandError(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
+			channel: interaction.channel_id,
 			error,
 		})
 		.into())
@@ -37,6 +42,7 @@ impl CommandError {
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		app.send_response(
+			self.channel,
 			Some(self.id),
 			&self.token,
 			GenericResponse {

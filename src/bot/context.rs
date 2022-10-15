@@ -1,7 +1,7 @@
 use std::{
 	ops::Deref,
 	sync::Arc,
-	time::{Duration, Instant},
+	time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use miette::{miette, Context, IntoDiagnostic, Result};
@@ -11,15 +11,23 @@ use tokio::{
 };
 use tokio_postgres::Client as PgClient;
 use tracing::debug;
-use twilight_http::{client::InteractionClient, error::ErrorType, Client};
+use twilight_http::{
+	client::InteractionClient,
+	error::ErrorType,
+	request::{application::interaction::CreateFollowup, channel::message::CreateMessage},
+	Client,
+};
 use twilight_model::{
 	application::component::Component,
 	channel::{embed::Embed, message::MessageFlags, Message},
 	http::{
 		attachment::Attachment,
-		interaction::{InteractionResponse, InteractionResponseType},
+		interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
 	},
-	id::{marker::InteractionMarker, Id},
+	id::{
+		marker::{ChannelMarker, InteractionMarker},
+		Id,
+	},
 };
 use twilight_util::builder::InteractionResponseDataBuilder;
 
@@ -66,82 +74,71 @@ impl App {
 	#[tracing::instrument]
 	pub async fn send_response(
 		&self,
-		id: Option<Id<InteractionMarker>>,
+		channel: Option<Id<ChannelMarker>>,
+		interaction: Option<Id<InteractionMarker>>,
 		token: &str,
 		response: GenericResponse,
 	) -> Result<()> {
 		debug!("check if response already sent");
 		let posted_response = self.get_response_message(token).await?;
 
-		let ic = self.interaction_client();
-		if posted_response.is_some() {
-			debug!("build followup");
-			let mut followup = ic.create_followup(token);
-			if response.ephemeral {
-				followup = followup.flags(MessageFlags::EPHEMERAL);
+		match (posted_response, interaction) {
+			(None, None) => debug!("no response and no id, post to channel"),
+			(Some(msg), _)
+				if SystemTime::now()
+					>= (UNIX_EPOCH
+						+ Duration::from_secs(msg.timestamp.as_secs().max(0) as u64 + 15 * 60)) =>
+			{
+				debug!("response already sent, but too old, post to channel instead")
 			}
-			if !response.embeds.is_empty() {
-				followup = followup
-					.embeds(&response.embeds)
+			(Some(_), _) => {
+				debug!("response already sent, post followup");
+				return response
+					.incept_followup(self.interaction_client().create_followup(token))?
+					.exec()
+					.await
 					.into_diagnostic()
-					.wrap_err("followup embed")?;
-			}
-			if !response.components.is_empty() {
-				followup = followup
-					.components(&response.components)
+					.wrap_err("followup exec")?
+					.model()
+					.await
 					.into_diagnostic()
-					.wrap_err("followup components")?;
+					.wrap_err("followup response")
+					.map(drop);
 			}
-			if !response.attachments.is_empty() {
-				followup = followup
-					.attachments(&response.attachments)
+			(None, Some(id)) => {
+				debug!("response not sent, post response");
+				return self
+					.interaction_client()
+					.create_response(
+						id,
+						token,
+						&InteractionResponse {
+							kind: InteractionResponseType::ChannelMessageWithSource,
+							data: Some(response.as_response()),
+						},
+					)
+					.exec()
+					.await
 					.into_diagnostic()
-					.wrap_err("followup attachments")?;
+					.wrap_err("create response")
+					.map(drop);
 			}
+		}
 
-			debug!("send followup");
-			followup
+		if let Some(channel) = channel {
+			response
+				.incept_message(self.client.create_message(channel))?
 				.exec()
 				.await
 				.into_diagnostic()
-				.wrap_err("followup exec")?
+				.wrap_err("message exec")?
 				.model()
 				.await
 				.into_diagnostic()
-				.wrap_err("followup response")
+				.wrap_err("message response")
 				.map(drop)
-		} else if let Some(id) = id {
-			debug!("build response");
-			let mut ic_response = InteractionResponseDataBuilder::new();
-			if response.ephemeral {
-				ic_response = ic_response.flags(MessageFlags::EPHEMERAL);
-			}
-			if !response.embeds.is_empty() {
-				ic_response = ic_response.embeds(response.embeds.into_iter());
-			}
-			if !response.components.is_empty() {
-				ic_response = ic_response.components(response.components.into_iter());
-			}
-			if !response.attachments.is_empty() {
-				ic_response = ic_response.attachments(response.attachments.into_iter());
-			}
-
-			debug!("send response");
-			ic.create_response(
-				id,
-				token,
-				&InteractionResponse {
-					kind: InteractionResponseType::ChannelMessageWithSource,
-					data: Some(ic_response.build()),
-				},
-			)
-			.exec()
-			.await
-			.into_diagnostic()
-			.wrap_err("create response")
-			.map(drop)
 		} else {
-			todo!()
+			Err(miette!("cannot post response, possibly a bug?"))
 		}
 	}
 
@@ -183,6 +180,78 @@ pub struct GenericResponse {
 	pub embeds: Vec<Embed>,
 	pub components: Vec<Component>,
 	pub attachments: Vec<Attachment>,
+}
+
+impl GenericResponse {
+	fn incept_followup<'f>(
+		&'f self,
+		mut followup: CreateFollowup<'f>,
+	) -> Result<CreateFollowup<'f>> {
+		if self.ephemeral {
+			followup = followup.flags(MessageFlags::EPHEMERAL);
+		}
+		if !self.embeds.is_empty() {
+			followup = followup
+				.embeds(&self.embeds)
+				.into_diagnostic()
+				.wrap_err("followup embed")?;
+		}
+		if !self.components.is_empty() {
+			followup = followup
+				.components(&self.components)
+				.into_diagnostic()
+				.wrap_err("followup components")?;
+		}
+		if !self.attachments.is_empty() {
+			followup = followup
+				.attachments(&self.attachments)
+				.into_diagnostic()
+				.wrap_err("followup attachments")?;
+		}
+		Ok(followup)
+	}
+
+	fn incept_message<'f>(&'f self, mut message: CreateMessage<'f>) -> Result<CreateMessage<'f>> {
+		if self.ephemeral {
+			message = message.flags(MessageFlags::EPHEMERAL);
+		}
+		if !self.embeds.is_empty() {
+			message = message
+				.embeds(&self.embeds)
+				.into_diagnostic()
+				.wrap_err("message embed")?;
+		}
+		if !self.components.is_empty() {
+			message = message
+				.components(&self.components)
+				.into_diagnostic()
+				.wrap_err("message components")?;
+		}
+		if !self.attachments.is_empty() {
+			message = message
+				.attachments(&self.attachments)
+				.into_diagnostic()
+				.wrap_err("message attachments")?;
+		}
+		Ok(message)
+	}
+
+	fn as_response(self) -> InteractionResponseData {
+		let mut ic_response = InteractionResponseDataBuilder::new();
+		if self.ephemeral {
+			ic_response = ic_response.flags(MessageFlags::EPHEMERAL);
+		}
+		if !self.embeds.is_empty() {
+			ic_response = ic_response.embeds(self.embeds.into_iter());
+		}
+		if !self.components.is_empty() {
+			ic_response = ic_response.components(self.components.into_iter());
+		}
+		if !self.attachments.is_empty() {
+			ic_response = ic_response.attachments(self.attachments.into_iter());
+		}
+		ic_response.build()
+	}
 }
 
 #[derive(Clone, Debug)]
