@@ -1,36 +1,32 @@
 use chrono::Duration;
 use humantime::format_duration;
 use itertools::Itertools;
-use miette::{miette, IntoDiagnostic, Result};
+use miette::{miette, Result};
 use twilight_mention::Mention;
 use twilight_model::application::component::{button::ButtonStyle, Button, Component};
 use uuid::Uuid;
 
 use crate::{
-	bot::utils::{action_row, time::round_duration_to_seconds},
+	bot::{
+		context::{GenericResponse, GenericResponseData},
+		utils::{action_row, time::round_duration_to_seconds},
+	},
 	db::sprint::{Sprint, SprintStatus},
 };
 
 use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
-pub struct SprintWarning {
-	pub token: String,
-	pub sprint: Uuid,
-}
+pub struct SprintWarning(Uuid);
 
 impl SprintWarning {
 	#[tracing::instrument(name = "SprintWarning")]
 	pub fn new(sprint: &Sprint) -> Action {
-		ActionClass::SprintWarning(Self {
-			token: sprint.interaction_token.clone(),
-			sprint: sprint.id,
-		})
-		.into()
+		ActionClass::SprintWarning(Self(sprint.id)).into()
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
-		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
+		let sprint = Sprint::get_current(app.clone(), self.0).await?;
 		if sprint.status >= SprintStatus::Started {
 			return Err(miette!(
 				"Bug: went to warn sprint but it was already started"
@@ -61,33 +57,34 @@ impl SprintWarning {
 		);
 		// TODO: ding
 
-		app.interaction_client()
-			.create_followup(&self.token)
-			.content(&content)
-			.into_diagnostic()?
-			.components(&action_row(vec![
-				Component::Button(Button {
-					custom_id: Some(format!("sprint:join:{id}")),
-					disabled: false,
-					emoji: None,
-					label: Some("Join".to_string()),
-					style: ButtonStyle::Secondary,
-					url: None,
-				}),
-				Component::Button(Button {
-					custom_id: Some(format!("sprint:start-words:{id}")),
-					disabled: false,
-					emoji: None,
-					label: Some("Starting words".to_string()),
-					style: ButtonStyle::Primary,
-					url: None,
-				}),
-			]))
-			.into_diagnostic()?
-			.exec()
-			.await
-			.into_diagnostic()?;
+		let components = action_row(vec![
+			Component::Button(Button {
+				custom_id: Some(format!("sprint:join:{id}")),
+				disabled: false,
+				emoji: None,
+				label: Some("Join".to_string()),
+				style: ButtonStyle::Secondary,
+				url: None,
+			}),
+			Component::Button(Button {
+				custom_id: Some(format!("sprint:start-words:{id}")),
+				disabled: false,
+				emoji: None,
+				label: Some("Starting words".to_string()),
+				style: ButtonStyle::Primary,
+				url: None,
+			}),
+		]);
 
-		Ok(())
+		app.send_response(GenericResponse::from_sprint(
+			&sprint,
+			GenericResponseData {
+				content: Some(content),
+				components,
+				..Default::default()
+			},
+		))
+		.await
+		.map(drop)
 	}
 }
