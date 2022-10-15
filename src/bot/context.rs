@@ -92,7 +92,7 @@ impl App {
 			})
 		} else if let Some(token) = &response.token {
 			debug!("check if response already sent");
-			self.get_response_message(token).await?
+			self.get_response_message(token).await.unwrap_or_default()
 		} else {
 			None
 		};
