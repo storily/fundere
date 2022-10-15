@@ -32,7 +32,7 @@ use twilight_model::{
 use twilight_util::builder::InteractionResponseDataBuilder;
 
 use super::action::Action;
-use crate::config::Config;
+use crate::{config::Config, db::sprint::Sprint};
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
@@ -206,6 +206,16 @@ impl GenericResponse {
 			interaction: Some(interaction.id),
 			token: Some(interaction.token.clone()),
 			message: None,
+			data,
+		}
+	}
+
+	pub fn from_sprint(sprint: &Sprint, data: GenericResponseData) -> Self {
+		Self {
+			channel: sprint.announce.map(|msg| msg.into()),
+			interaction: None,
+			token: Some(sprint.interaction_token.clone()),
+			message: sprint.announce.map(MessageForm::Db),
 			data,
 		}
 	}

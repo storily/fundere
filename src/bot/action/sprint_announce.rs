@@ -9,7 +9,7 @@ use twilight_model::application::{
 
 use crate::{
 	bot::{
-		context::{GenericResponse, GenericResponseData, MessageForm, Timer},
+		context::{GenericResponse, GenericResponseData, Timer},
 		utils::{
 			action_row,
 			time::{round_duration_to_seconds, ChronoDurationSaturatingSub},
@@ -118,13 +118,10 @@ impl SprintAnnounce {
 	#[tracing::instrument(name = "SprintAnnounce::new_from_db", skip(app))]
 	pub async fn new_from_db(app: App, sprint: Sprint) -> Result<Action> {
 		Ok(ActionClass::SprintAnnounce(Self {
-			response: Box::new(GenericResponse {
-				channel: sprint.announce.map(|msg| msg.into()),
-				interaction: None,
-				token: Some(sprint.interaction_token.clone()),
-				message: sprint.announce.map(MessageForm::Db),
-				data: Self::prepare(app, &sprint).await?,
-			}),
+			response: Box::new(GenericResponse::from_sprint(
+				&sprint,
+				Self::prepare(app, &sprint).await?,
+			)),
 			sprint: Box::new(sprint),
 		})
 		.into())
