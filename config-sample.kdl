@@ -9,6 +9,10 @@ discord token="<TOKEN HERE>" app-id=123 {
 		guild-message-reactions
 		guild-voice-states
 	}
+
+	// The discord user ID of the maintainer, used to DM error messages.
+	// Can be omitted to disable that.
+	maintainer-id 321123456789012345
 }
 
 db {

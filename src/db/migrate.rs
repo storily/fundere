@@ -11,7 +11,11 @@ macro_rules! migration {
 	};
 }
 
-const MIGRATIONS: &[(&str, &str)] = &[migration!("000_base"), migration!("001_sprints")];
+const MIGRATIONS: &[(&str, &str)] = &[
+	migration!("000_base"),
+	migration!("001_sprints"),
+	migration!("002_errors"),
+];
 
 #[tracing::instrument(skip(db))]
 pub async fn drop(db: &Client) -> Result<()> {
@@ -26,7 +30,7 @@ pub async fn migrate(db: &mut Client) -> Result<()> {
 		MIGRATIONS
 			.iter()
 			.enumerate()
-			.find_map(|(n, (name, _))| if &&last == name { Some(n) } else { None })
+			.find_map(|(n, (name, _))| if &&last == name { Some(n + 1) } else { None })
 			.ok_or_else(|| {
 				miette!("last migration applied is not in available set, database in invalid state")
 			})?

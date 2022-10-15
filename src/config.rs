@@ -33,10 +33,15 @@ impl Config {
 pub struct DiscordConfig {
 	#[knuffel(property)]
 	pub token: String,
+
 	#[knuffel(property)]
 	pub app_id: u64,
+
 	#[knuffel(child)]
 	pub intents: IntentsConfig,
+
+	#[knuffel(child, unwrap(argument), default)]
+	pub maintainer_id: Option<u64>,
 }
 
 #[derive(Debug, Clone, knuffel::Decode)]

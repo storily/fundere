@@ -142,7 +142,7 @@ async fn ticker(app: App, mut timings: Receiver<Timer>) -> Result<()> {
 async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 	match &interaction.data {
 		Some(InteractionData::ApplicationCommand(data)) => {
-			handle_interaction_error(&app, interaction, async {
+			handle_interaction_error(app.clone(), interaction, async {
 				info!(command=?data.name, "handle slash command");
 				match data.name.as_str() {
 					"sprint" => sprint::on_command(app.clone(), interaction, &data)
@@ -163,7 +163,7 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 			.await?;
 		}
 		Some(InteractionData::MessageComponent(data)) => {
-			handle_interaction_error(&app, interaction, async {
+			handle_interaction_error(app.clone(), interaction, async {
 				let subids: Vec<&str> = data.custom_id.split(':').collect();
 				info!(?subids, "handle component message");
 				match subids.first() {
@@ -171,6 +171,11 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 						sprint::on_component(app.clone(), interaction, &subids[1..], &data)
 							.await
 							.wrap_err("component: sprint")
+					}
+					Some(&"debug") => {
+						debug::on_component(app.clone(), interaction, &subids[1..], &data)
+							.await
+							.wrap_err("component: debug")
 					}
 					Some(other) => {
 						warn!("unhandled component action: {other:?}");
@@ -182,7 +187,7 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 			.await?;
 		}
 		Some(InteractionData::ModalSubmit(data)) => {
-			handle_interaction_error(&app, interaction, async {
+			handle_interaction_error(app.clone(), interaction, async {
 				let subids: Vec<&str> = data.custom_id.split(':').collect();
 				info!(?subids, "handle modal submit");
 				match subids.first() {
@@ -208,12 +213,13 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 }
 
 async fn handle_interaction_error(
-	app: &App,
+	app: App,
 	interaction: &Interaction,
 	task: impl std::future::Future<Output = Result<()>>,
 ) -> Result<()> {
 	if let Err(err) = task.await {
-		app.do_action(CommandError::new(interaction, err)?).await
+		app.do_action(CommandError::new(app.clone(), interaction, err).await?)
+			.await
 	} else {
 		Ok(())
 	}
