@@ -33,20 +33,11 @@ pub mod sprint_words_start;
 #[derive(Debug, Clone)]
 pub struct Action {
 	pub class: ActionClass,
-	pub as_followup: bool,
 }
 
 impl Action {
-	pub fn as_followup(mut self) -> Self {
-		self.as_followup = true;
-		self
-	}
-
 	pub async fn handle(self, app: App) -> Result<()> {
-		let args = Args {
-			app,
-			as_followup: self.as_followup,
-		};
+		let args = Args { app };
 
 		use ActionClass::*;
 		match self.class {
@@ -70,17 +61,11 @@ impl Action {
 #[derive(Debug)]
 pub struct Args {
 	pub app: App,
-
-	/// Hint that the interaction should be handled as a followup instead of a response.
-	pub as_followup: bool,
 }
 
 impl From<ActionClass> for Action {
 	fn from(class: ActionClass) -> Self {
-		Self {
-			class,
-			as_followup: false,
-		}
+		Self { class }
 	}
 }
 
