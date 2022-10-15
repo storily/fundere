@@ -244,6 +244,9 @@ impl GenericResponseData {
 		if self.ephemeral {
 			followup = followup.flags(MessageFlags::EPHEMERAL);
 		}
+		if let Some(content) = &self.content {
+			followup = followup.content(content).into_diagnostic().wrap_err("followup content")?;
+		}
 		if !self.embeds.is_empty() {
 			followup = followup
 				.embeds(&self.embeds)
@@ -269,6 +272,9 @@ impl GenericResponseData {
 		if self.ephemeral {
 			message = message.flags(MessageFlags::EPHEMERAL);
 		}
+		if let Some(content) = &self.content {
+			message = message.content(content).into_diagnostic().wrap_err("message content")?;
+		}
 		if !self.embeds.is_empty() {
 			message = message
 				.embeds(&self.embeds)
@@ -292,6 +298,9 @@ impl GenericResponseData {
 
 	fn as_response(self) -> InteractionResponseData {
 		let mut ic_response = InteractionResponseDataBuilder::new();
+		if let Some(content) = self.content {
+			ic_response = ic_response.content(content);
+		}
 		if self.ephemeral {
 			ic_response = ic_response.flags(MessageFlags::EPHEMERAL);
 		}
