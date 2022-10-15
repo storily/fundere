@@ -8,7 +8,6 @@ use twilight_model::{
 		marker::{GuildMarker, UserMarker},
 		Id,
 	},
-	user::User,
 };
 
 use crate::bot::App;
@@ -18,33 +17,16 @@ use crate::bot::App;
 // so we're quite safe casting them to i64
 
 #[derive(Debug, Clone, Copy, ToSql, FromSql)]
-#[postgres(name = "member_t")]
-struct MemberInner {
+#[postgres(name = "member")]
+pub struct Member {
 	pub guild_id: i64,
 	pub user_id: i64,
 }
 
-#[derive(Debug, Clone, Copy, ToSql, FromSql)]
-#[postgres(name = "member")]
-pub struct Member(MemberInner);
-
 impl Member {
-	#[allow(dead_code)]
-	pub async fn to_user(&self, app: App) -> Result<User> {
+	pub async fn to_member(self, app: App) -> Result<DiscordMember> {
 		app.client
-			.user(Id::new(self.0.user_id as _))
-			.exec()
-			.await
-			.into_diagnostic()?
-			.model()
-			.await
-			.into_diagnostic()
-	}
-
-	#[allow(dead_code)]
-	pub async fn to_member(&self, app: App) -> Result<DiscordMember> {
-		app.client
-			.guild_member(Id::new(self.0.guild_id as _), Id::new(self.0.user_id as _))
+			.guild_member(self.into(), self.into())
 			.exec()
 			.await
 			.into_diagnostic()?
@@ -62,25 +44,17 @@ impl Mention<Id<UserMarker>> for Member {
 
 impl From<Member> for Id<UserMarker> {
 	fn from(chan: Member) -> Self {
-		Id::new(chan.0.user_id as _)
+		Id::new(chan.user_id as _)
 	}
 }
 
 impl From<Member> for Id<GuildMarker> {
 	fn from(chan: Member) -> Self {
-		Id::new(chan.0.guild_id as _)
+		Id::new(chan.guild_id as _)
 	}
 }
 
 impl TryFrom<&Interaction> for Member {
-	type Error = Report;
-
-	fn try_from(interaction: &Interaction) -> Result<Self> {
-		MemberInner::try_from(interaction).map(Self)
-	}
-}
-
-impl TryFrom<&Interaction> for MemberInner {
 	type Error = Report;
 
 	fn try_from(interaction: &Interaction) -> Result<Self> {

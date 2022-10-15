@@ -1,6 +1,6 @@
 use chrono::Duration;
 use humantime::format_duration;
-use miette::{miette, Result};
+use miette::{miette, Context, Result};
 use tracing::debug;
 use twilight_model::application::{
 	component::{button::ButtonStyle, Button, Component},
@@ -130,7 +130,7 @@ impl SprintAnnounce {
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		let message = app.send_response(*self.response).await?;
 		self.sprint
-			.set_announce(app, (&message).try_into()?)
+			.set_announce(app, (&message).try_into().wrap_err("convert message")?)
 			.await?;
 		Ok(())
 	}
