@@ -7,11 +7,21 @@ use std::{
 use miette::{miette, Context, IntoDiagnostic, Result};
 use tokio::{
 	sync::mpsc::Sender,
-	time::{sleep_until, Instant as TokioInstant, Sleep},
+	time::{sleep_until, timeout, Instant as TokioInstant, Sleep},
 };
 use tokio_postgres::Client as PgClient;
-use twilight_http::{client::InteractionClient, Client};
-use twilight_model::id::Id;
+use tracing::debug;
+use twilight_http::{client::InteractionClient, error::ErrorType, Client};
+use twilight_model::{
+	application::component::Component,
+	channel::{embed::Embed, message::MessageFlags, Message},
+	http::{
+		attachment::Attachment,
+		interaction::{InteractionResponse, InteractionResponseType},
+	},
+	id::{marker::InteractionMarker, Id},
+};
+use twilight_util::builder::InteractionResponseDataBuilder;
 
 use super::action::Action;
 use crate::config::Config;
@@ -52,6 +62,110 @@ impl App {
 	pub async fn send_timer(&self, timing: Timer) -> Result<()> {
 		self.timer.send(timing).await.into_diagnostic()
 	}
+
+	#[tracing::instrument]
+	pub async fn send_response(
+		&self,
+		id: Option<Id<InteractionMarker>>,
+		token: &str,
+		response: GenericResponse,
+	) -> Result<()> {
+		debug!("check if response already sent");
+		let posted_response = self.get_response_message(token).await?;
+
+		let ic = self.interaction_client();
+		if posted_response.is_some() {
+			debug!("build followup");
+			let mut followup = ic.create_followup(token);
+			if response.ephemeral {
+				followup = followup.flags(MessageFlags::EPHEMERAL);
+			}
+			if !response.embeds.is_empty() {
+				followup = followup
+					.embeds(&response.embeds)
+					.into_diagnostic()
+					.wrap_err("followup embed")?;
+			}
+			if !response.components.is_empty() {
+				followup = followup
+					.components(&response.components)
+					.into_diagnostic()
+					.wrap_err("followup components")?;
+			}
+			if !response.attachments.is_empty() {
+				followup = followup
+					.attachments(&response.attachments)
+					.into_diagnostic()
+					.wrap_err("followup attachments")?;
+			}
+
+			debug!("send followup");
+			followup
+				.exec()
+				.await
+				.into_diagnostic()
+				.wrap_err("followup exec")?
+				.model()
+				.await
+				.into_diagnostic()
+				.wrap_err("followup response")
+				.map(drop)
+		} else if let Some(id) = id {
+			debug!("build response");
+			let mut ic_response = InteractionResponseDataBuilder::new();
+			if response.ephemeral {
+				ic_response = ic_response.flags(MessageFlags::EPHEMERAL);
+			}
+			if !response.embeds.is_empty() {
+				ic_response = ic_response.embeds(response.embeds.into_iter());
+			}
+			if !response.components.is_empty() {
+				ic_response = ic_response.components(response.components.into_iter());
+			}
+			if !response.attachments.is_empty() {
+				ic_response = ic_response.attachments(response.attachments.into_iter());
+			}
+
+			debug!("send response");
+			ic.create_response(
+				id,
+				token,
+				&InteractionResponse {
+					kind: InteractionResponseType::ChannelMessageWithSource,
+					data: Some(ic_response.build()),
+				},
+			)
+			.exec()
+			.await
+			.into_diagnostic()
+			.wrap_err("create response")
+			.map(drop)
+		} else {
+			todo!()
+		}
+	}
+
+	async fn get_response_message(&self, token: &str) -> Result<Option<Message>> {
+		let ic = self.interaction_client();
+		match timeout(
+			Duration::from_millis(self.config.internal.response_lookup_timeout),
+			ic.response(token).exec(),
+		)
+		.await
+		{
+			Ok(Ok(resp)) => resp
+				.model()
+				.await
+				.into_diagnostic()
+				.wrap_err("decode into Message")
+				.map(Some),
+			Ok(Err(err)) => match err.kind() {
+				ErrorType::Response { status, .. } if status.get() == 404 => Ok(None),
+				_ => Err(err).into_diagnostic().wrap_err("get response"),
+			},
+			Err(_) => Ok(None),
+		}
+	}
 }
 
 impl Deref for App {
@@ -60,6 +174,15 @@ impl Deref for App {
 	fn deref(&self) -> &Self::Target {
 		&self.0
 	}
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct GenericResponse {
+	pub ephemeral: bool,
+	pub content: Option<String>,
+	pub embeds: Vec<Embed>,
+	pub components: Vec<Component>,
+	pub attachments: Vec<Attachment>,
 }
 
 #[derive(Clone, Debug)]
