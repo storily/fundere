@@ -20,6 +20,7 @@ use self::{action::CommandError, context::Timer};
 pub mod action;
 pub mod calc;
 pub mod context;
+pub mod debug;
 pub mod sprint;
 pub mod utils;
 
@@ -37,9 +38,9 @@ pub async fn start(config: Config) -> Result<()> {
 	{
 		let interaction_client = app.interaction_client();
 
-		info!("register commands: calc, sprint");
+		info!("register commands: calc, debug, sprint");
 		interaction_client
-			.set_global_commands(&[calc::command()?, sprint::command()?])
+			.set_global_commands(&[calc::command()?, debug::command()?, sprint::command()?])
 			.exec()
 			.await
 			.into_diagnostic()?;
@@ -147,6 +148,9 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					"sprint" => sprint::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: sprint"),
+					"debug" => debug::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: debug"),
 					"calc" => calc::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: calc"),
