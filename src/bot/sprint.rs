@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use chrono::{Duration, Utc};
 use miette::{miette, Context, IntoDiagnostic, Result};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
 	interaction::{
@@ -84,7 +84,7 @@ pub async fn on_command(
 			.await
 			.wrap_err("command: new")?,
 		Some((other, _)) => warn!("unhandled sprint subcommand: {other}"),
-		_ => todo!("handle bare sprint command?"),
+		_ => error!("unreachable bare sprint command"),
 	}
 
 	Ok(())
