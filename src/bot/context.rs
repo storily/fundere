@@ -245,7 +245,10 @@ impl GenericResponseData {
 			followup = followup.flags(MessageFlags::EPHEMERAL);
 		}
 		if let Some(content) = &self.content {
-			followup = followup.content(content).into_diagnostic().wrap_err("followup content")?;
+			followup = followup
+				.content(content)
+				.into_diagnostic()
+				.wrap_err("followup content")?;
 		}
 		if !self.embeds.is_empty() {
 			followup = followup
@@ -273,7 +276,10 @@ impl GenericResponseData {
 			message = message.flags(MessageFlags::EPHEMERAL);
 		}
 		if let Some(content) = &self.content {
-			message = message.content(content).into_diagnostic().wrap_err("message content")?;
+			message = message
+				.content(content)
+				.into_diagnostic()
+				.wrap_err("message content")?;
 		}
 		if !self.embeds.is_empty() {
 			message = message
