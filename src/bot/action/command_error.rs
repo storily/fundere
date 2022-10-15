@@ -1,6 +1,9 @@
-use std::iter::{once, repeat};
+use std::{iter::repeat, time::Duration};
 
-use miette::{GraphicalReportHandler, GraphicalTheme, IntoDiagnostic, Report, Result};
+use miette::{Context, GraphicalReportHandler, GraphicalTheme, IntoDiagnostic, Report, Result};
+use tokio::time::timeout;
+use tracing::debug;
+use twilight_http::error::ErrorType;
 use twilight_model::{
 	application::interaction::Interaction,
 	channel::message::MessageFlags,
@@ -35,8 +38,47 @@ impl CommandError {
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
-		app.interaction_client()
-			.create_response(
+		let ic = app.interaction_client();
+		debug!("check if response already sent");
+		let has_response = timeout(
+			Duration::from_millis(app.config.internal.response_lookup_timeout),
+			ic.response(&self.token).exec(),
+		)
+		.await
+		.map_or_else(|_| Ok(false), |resp| resp.map(|_| true))
+		.or_else(|err| match err.kind() {
+			ErrorType::Response { status, .. } if status.get() == 404 => Ok(false),
+			_ => Err(err),
+		})
+		.into_diagnostic()
+		.wrap_err("has_response")?;
+
+		let embeds = vec![EmbedBuilder::new()
+			.color(0xFF_00_00)
+			.description(self.error)
+			.validate()
+			.into_diagnostic()?
+			.build()];
+
+		if has_response {
+			debug!("send followup");
+			ic.create_followup(&self.token)
+				.flags(MessageFlags::EPHEMERAL)
+				.embeds(&embeds)
+				.into_diagnostic()
+				.wrap_err("followup embed")?
+				.exec()
+				.await
+				.into_diagnostic()
+				.wrap_err("followup exec")?
+				.model()
+				.await
+				.into_diagnostic()
+				.wrap_err("followup response")
+				.map(drop)
+		} else {
+			debug!("send response");
+			ic.create_response(
 				self.id,
 				&self.token,
 				&InteractionResponse {
@@ -44,21 +86,16 @@ impl CommandError {
 					data: Some(
 						InteractionResponseDataBuilder::new()
 							.flags(MessageFlags::EPHEMERAL)
-							.embeds(once(
-								EmbedBuilder::new()
-									.color(0xFF_00_00)
-									.description(self.error)
-									.validate()
-									.into_diagnostic()?
-									.build(),
-							))
+							.embeds(embeds.into_iter())
 							.build(),
 					),
 				},
 			)
 			.exec()
 			.await
-			.into_diagnostic()?;
-		Ok(())
+			.into_diagnostic()
+			.wrap_err("create response")
+			.map(drop)
+		}
 	}
 }

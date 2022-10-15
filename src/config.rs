@@ -258,10 +258,16 @@ impl From<ConfigChannelBinding> for ChannelBinding {
 pub struct InternalConfig {
 	#[knuffel(child, unwrap(argument), default = Self::default().timer_buffer)]
 	pub timer_buffer: usize,
+
+	#[knuffel(child, unwrap(argument), default = Self::default().response_lookup_timeout)]
+	pub response_lookup_timeout: u64,
 }
 
 impl Default for InternalConfig {
 	fn default() -> Self {
-		Self { timer_buffer: 16 }
+		Self {
+			timer_buffer: 16,
+			response_lookup_timeout: 600,
+		}
 	}
 }

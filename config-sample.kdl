@@ -1,3 +1,5 @@
+// you should only use this as a guide, and not copy it wholesale.
+
 discord token="<TOKEN HERE>" app-id=123 {
 	// Which Discord stream intents to request. These determine which events are
 	// received over the websocket connection.
@@ -47,9 +49,32 @@ db {
 }
 
 // reference for internal settings, values are defaults
-/-internal {
+internal {
 	// The size of the buffer used to pass around timers in the application.
 	// This is a relatively infrequent operation and the receiver will most
 	// often be idle.
 	timer-buffer 16
+
+	// The time in milliseconds to wait before assuming that a response doesn't
+	// exist. In some places in the bot, we try to determine whether an
+	// interaction has had a response by querying the Discord API. However, the
+	// way that endpoint works is by waiting for the response to exist, and then
+	// return it. There is a roughly 3 seconds period during which Discord will
+	// wait for a response for an interaction, beyond which trying to respond
+	// will fail. So if we're trying to decide whether to send a response or to
+	// post a followup (because posting a response when one exists will fail,
+	// but posting a followup when a response doesn't exist will ALSO fail), we
+	// cannot wait for this entire period as the interaction will have expired
+	// by the time the response endpoint returns, by its very nature. So we
+	// instead wait for a shorter period of time, and if the response doesn't
+	// arrive by that time, we assume that it doesn't exist. This is that period
+	// or time.
+	//
+	// The value should be no longer than 3 seconds minus the round trip time to
+	// the API (test using `time curl https://discord.com/api/v10/` or whatever
+	// the latest API version is), but should ideally be as short as possible
+	// while still being longer than the round trip time. The default value is
+	// 600 milliseconds, which is twice the round trip time from my workstation
+	// in New Zealand to the Discord API in the US.
+	response-lookup-timeout 600
 }
