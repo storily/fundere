@@ -72,9 +72,20 @@ impl App {
 	}
 
 	#[tracing::instrument]
-	pub async fn send_response(&self, response: GenericResponse) -> Result<()> {
-		let posted_response = if response.message.is_some() {
-			response.message
+	pub async fn send_response(&self, response: GenericResponse) -> Result<Message> {
+		let posted_response = if let Some(msg) = response.message {
+			Some(match msg {
+				MessageForm::Discord(msg) => msg,
+				MessageForm::Db(msgid) => self
+					.client
+					.message(msgid.into(), msgid.into())
+					.exec()
+					.await
+					.into_diagnostic()?
+					.model()
+					.await
+					.into_diagnostic()?,
+			})
 		} else if let Some(token) = &response.token {
 			debug!("check if response already sent");
 			self.get_response_message(token).await?
@@ -106,13 +117,11 @@ impl App {
 					.model()
 					.await
 					.into_diagnostic()
-					.wrap_err("followup response")
-					.map(drop);
+					.wrap_err("followup response");
 			}
 			(None, Some(id), Some(token)) => {
 				debug!("response not sent, post response");
-				return self
-					.interaction_client()
+				self.interaction_client()
 					.create_response(
 						id,
 						&token,
@@ -124,8 +133,12 @@ impl App {
 					.exec()
 					.await
 					.into_diagnostic()
-					.wrap_err("create response")
-					.map(drop);
+					.wrap_err("create response")?;
+
+				return self
+					.get_response_message(&token)
+					.await?
+					.ok_or_else(|| miette!("no response message"));
 			}
 		}
 
@@ -141,7 +154,6 @@ impl App {
 				.await
 				.into_diagnostic()
 				.wrap_err("message response")
-				.map(drop)
 		} else {
 			Err(miette!("cannot post response, possibly a bug?"))
 		}
@@ -183,7 +195,7 @@ pub struct GenericResponse {
 	pub channel: Option<Id<ChannelMarker>>,
 	pub interaction: Option<Id<InteractionMarker>>,
 	pub token: Option<String>,
-	pub message: Option<Message>,
+	pub message: Option<MessageForm>,
 	pub data: GenericResponseData,
 }
 
@@ -197,6 +209,12 @@ impl GenericResponse {
 			data,
 		}
 	}
+}
+
+#[derive(Debug, Clone)]
+pub enum MessageForm {
+	Discord(Message),
+	Db(crate::db::message::Message),
 }
 
 #[derive(Debug, Clone, Default)]

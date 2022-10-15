@@ -40,6 +40,6 @@ impl CommandError {
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
-		app.send_response(self.0).await
+		app.send_response(self.0).await.map(drop)
 	}
 }
