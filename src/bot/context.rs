@@ -18,7 +18,7 @@ use twilight_http::{
 	Client,
 };
 use twilight_model::{
-	application::component::Component,
+	application::{component::Component, interaction::Interaction},
 	channel::{embed::Embed, message::MessageFlags, Message},
 	http::{
 		attachment::Attachment,
@@ -72,29 +72,33 @@ impl App {
 	}
 
 	#[tracing::instrument]
-	pub async fn send_response(
-		&self,
-		channel: Option<Id<ChannelMarker>>,
-		interaction: Option<Id<InteractionMarker>>,
-		token: &str,
-		response: GenericResponse,
-	) -> Result<()> {
-		debug!("check if response already sent");
-		let posted_response = self.get_response_message(token).await?;
+	pub async fn send_response(&self, response: GenericResponse) -> Result<()> {
+		let posted_response = if response.message.is_some() {
+			response.message
+		} else if let Some(token) = &response.token {
+			debug!("check if response already sent");
+			self.get_response_message(token).await?
+		} else {
+			None
+		};
 
-		match (posted_response, interaction) {
-			(None, None) => debug!("no response and no id, post to channel"),
-			(Some(msg), _)
+		match (posted_response, response.interaction, response.token) {
+			(None, None, _) | (None, _, None) => {
+				debug!("no response and no interaction, post to channel")
+			}
+			(Some(msg), _, _)
 				if SystemTime::now()
 					>= (UNIX_EPOCH
 						+ Duration::from_secs(msg.timestamp.as_secs().max(0) as u64 + 15 * 60)) =>
 			{
 				debug!("response already sent, but too old, post to channel instead")
 			}
-			(Some(_), _) => {
+			(Some(_), _, None) => debug!("got a response but no interaction, post to channel"),
+			(Some(_), _, Some(token)) => {
 				debug!("response already sent, post followup");
 				return response
-					.incept_followup(self.interaction_client().create_followup(token))?
+					.data
+					.incept_followup(self.interaction_client().create_followup(&token))?
 					.exec()
 					.await
 					.into_diagnostic()
@@ -105,16 +109,16 @@ impl App {
 					.wrap_err("followup response")
 					.map(drop);
 			}
-			(None, Some(id)) => {
+			(None, Some(id), Some(token)) => {
 				debug!("response not sent, post response");
 				return self
 					.interaction_client()
 					.create_response(
 						id,
-						token,
+						&token,
 						&InteractionResponse {
 							kind: InteractionResponseType::ChannelMessageWithSource,
-							data: Some(response.as_response()),
+							data: Some(response.data.as_response()),
 						},
 					)
 					.exec()
@@ -125,8 +129,9 @@ impl App {
 			}
 		}
 
-		if let Some(channel) = channel {
+		if let Some(channel) = response.channel {
 			response
+				.data
 				.incept_message(self.client.create_message(channel))?
 				.exec()
 				.await
@@ -175,6 +180,27 @@ impl Deref for App {
 
 #[derive(Debug, Clone, Default)]
 pub struct GenericResponse {
+	pub channel: Option<Id<ChannelMarker>>,
+	pub interaction: Option<Id<InteractionMarker>>,
+	pub token: Option<String>,
+	pub message: Option<Message>,
+	pub data: GenericResponseData,
+}
+
+impl GenericResponse {
+	pub fn from_interaction(interaction: &Interaction, data: GenericResponseData) -> Self {
+		Self {
+			channel: interaction.channel_id,
+			interaction: Some(interaction.id),
+			token: Some(interaction.token.clone()),
+			message: None,
+			data,
+		}
+	}
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct GenericResponseData {
 	pub ephemeral: bool,
 	pub content: Option<String>,
 	pub embeds: Vec<Embed>,
@@ -182,7 +208,7 @@ pub struct GenericResponse {
 	pub attachments: Vec<Attachment>,
 }
 
-impl GenericResponse {
+impl GenericResponseData {
 	fn incept_followup<'f>(
 		&'f self,
 		mut followup: CreateFollowup<'f>,
