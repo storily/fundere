@@ -80,16 +80,15 @@ impl App {
 				MessageForm::Db(msgid) => {
 					debug!(?msgid, "get message from discord");
 
-					self
-					.client
-					.message(msgid.into(), msgid.into())
-					.exec()
-					.await
-					.into_diagnostic()?
-					.model()
-					.await
-					.into_diagnostic()?
-				},
+					self.client
+						.message(msgid.into(), msgid.into())
+						.exec()
+						.await
+						.into_diagnostic()?
+						.model()
+						.await
+						.into_diagnostic()?
+				}
 			})
 		} else if let Some(token) = &response.token {
 			debug!("check if response already sent");

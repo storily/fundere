@@ -2,13 +2,22 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use miette::Result;
+use tokio::runtime::Builder;
 
 pub(crate) mod bot;
 pub(crate) mod config;
 pub(crate) mod db;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+	Builder::new_multi_thread()
+		.thread_stack_size(3 * 1024 * 1024)
+		.enable_all()
+		.build()
+		.unwrap()
+		.block_on(entry())
+}
+
+async fn entry() -> Result<()> {
 	tracing_subscriber::fmt::init();
 
 	let cli = Cli::parse();
