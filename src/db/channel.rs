@@ -5,6 +5,7 @@ use postgres_types::{FromSql, Kind, ToSql, Type};
 use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::{
 	application::interaction::Interaction,
+	channel::message::Message as DiscordMessage,
 	channel::Channel as DiscordChannel,
 	id::{
 		marker::{ChannelMarker, GuildMarker},
@@ -113,5 +114,19 @@ impl TryFrom<&Interaction> for ChannelInner {
 			guild_id: guild_id.get() as _,
 			channel_id: channel.get() as _,
 		})
+	}
+}
+
+impl TryFrom<&DiscordMessage> for Channel {
+	type Error = Report;
+
+	fn try_from(msg: &DiscordMessage) -> Result<Self> {
+		Ok(Self(ChannelInner {
+			guild_id: msg
+				.guild_id
+				.ok_or_else(|| miette!("not a guild message!"))?
+				.get() as _,
+			channel_id: msg.channel_id.get() as _,
+		}))
 	}
 }

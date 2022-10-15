@@ -19,7 +19,7 @@ CREATE TABLE sprints (
 
 	status sprint_status not null default 'Initial',
 	interaction_token text not null,
-	channels channel[] not null default '{}',
+	announce "message" null,
 
 	unique (shortid)
 );
@@ -40,36 +40,51 @@ CREATE TABLE sprint_participants (
 );
 
 CREATE VIEW sprints_current AS
-	SELECT sprints.*
-	FROM sprints
+SELECT
+	sprints.*
+FROM
+	sprints
 	LEFT JOIN sprint_participants ON sprints.id = sprint_participants.sprint_id
-	WHERE true
-		AND sprints.cancelled_at IS NULL
-		AND (
-			sprints.starting_at >= current_timestamp
-			OR sprints.starting_at + sprints.duration >= current_timestamp
-		)
-	GROUP BY sprints.id
-	HAVING count(sprint_participants.*) > 0;
+WHERE
+	true
+	AND sprints.cancelled_at IS NULL
+	AND (
+		sprints.starting_at >= current_timestamp
+		OR sprints.starting_at + sprints.duration >= current_timestamp
+	)
+GROUP BY
+	sprints.id
+HAVING
+	count(sprint_participants.*) > 0;
 
 CREATE VIEW sprints_finished_but_not_ended AS
-	SELECT sprints.*
-	FROM sprints
+SELECT
+	sprints.*
+FROM
+	sprints
 	LEFT JOIN sprint_participants ON sprints.id = sprint_participants.sprint_id
-	WHERE true
-		AND sprints.cancelled_at IS NULL
-		AND sprints.starting_at + sprints.duration <= current_timestamp
-		AND sprints.status NOT IN ('Ended', 'Summaried')
-	GROUP BY sprints.id
-	HAVING count(sprint_participants.*) > 0;
+WHERE
+	true
+	AND sprints.cancelled_at IS NULL
+	AND sprints.starting_at + sprints.duration <= current_timestamp
+	AND sprints.status NOT IN ('Ended', 'Summaried')
+GROUP BY
+	sprints.id
+HAVING
+	count(sprint_participants.*) > 0;
 
 CREATE VIEW sprints_finished_but_not_summaried AS
-	SELECT sprints.*
-	FROM sprints
+SELECT
+	sprints.*
+FROM
+	sprints
 	LEFT JOIN sprint_participants ON sprints.id = sprint_participants.sprint_id
-	WHERE true
-		AND sprints.cancelled_at IS NULL
-		AND sprints.starting_at + sprints.duration <= current_timestamp
-		AND sprints.status != 'Summaried'
-	GROUP BY sprints.id
-	HAVING count(sprint_participants.*) > 0;
+WHERE
+	true
+	AND sprints.cancelled_at IS NULL
+	AND sprints.starting_at + sprints.duration <= current_timestamp
+	AND sprints.status != 'Summaried'
+GROUP BY
+	sprints.id
+HAVING
+	count(sprint_participants.*) > 0;

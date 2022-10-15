@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use humantime::{format_duration, FormattedDuration};
 use itertools::Itertools;
@@ -14,7 +16,7 @@ use crate::bot::{
 	App,
 };
 
-use super::{channel::Channel, member::Member};
+use super::{member::Member, message::Message};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ToSql, FromSql)]
 #[postgres(name = "sprint_status")]
@@ -64,7 +66,7 @@ pub struct Sprint {
 	pub duration: Interval,
 	pub status: SprintStatus,
 	pub interaction_token: String,
-	pub channels: Vec<Channel>,
+	pub announce: Option<Message>,
 }
 
 impl Sprint {
@@ -79,7 +81,7 @@ impl Sprint {
 			duration: row.try_get("duration").into_diagnostic()?,
 			status: row.try_get("status").into_diagnostic()?,
 			interaction_token: row.try_get("interaction_token").into_diagnostic()?,
-			channels: row.try_get("channels").into_diagnostic()?,
+			announce: row.try_get("announce").into_diagnostic()?,
 		})
 	}
 
@@ -89,7 +91,6 @@ impl Sprint {
 		starting_at: DateTime<TZ>,
 		duration: Duration,
 		interaction_token: &str,
-		channel: Channel,
 		member: Member,
 	) -> Result<Self>
 	where
@@ -98,13 +99,12 @@ impl Sprint {
 		let sprint = app
 			.db
 			.query_one(
-				"INSERT INTO sprints (starting_at, duration, interaction_token, channels) VALUES ($1, $2, $3, $4) RETURNING *",
+				"INSERT INTO sprints (starting_at, duration, interaction_token) VALUES ($1, $2, $3) RETURNING *",
 				&[
 					&starting_at.with_timezone(&Utc),
 					&Interval::from_duration(duration)
 						.ok_or(miette!("could not convert duration to interval"))?,
 					&interaction_token,
-					&[channel],
 				],
 			)
 			.await
@@ -217,6 +217,19 @@ impl Sprint {
 			.await
 			.into_diagnostic()
 			.wrap_err("db: update sprint status")
+			.map(drop)
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn set_announce(&self, app: App, message: Message) -> Result<()> {
+		app.db
+			.query(
+				"UPDATE sprints SET announce = $2 WHERE id = $1",
+				&[&self.id, &message],
+			)
+			.await
+			.into_diagnostic()
+			.wrap_err("db: set sprint announce")
 			.map(drop)
 	}
 

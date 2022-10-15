@@ -255,15 +255,8 @@ async fn sprint_new(
 	let member = Member::try_from(interaction)?;
 
 	debug!(%starting, %duration, ?channel, ?member, "recording sprint");
-	let sprint = Sprint::create(
-		app.clone(),
-		starting,
-		duration,
-		&interaction.token,
-		channel,
-		member,
-	)
-	.await?;
+	let sprint =
+		Sprint::create(app.clone(), starting, duration, &interaction.token, member).await?;
 
 	app.do_action(
 		SprintAnnounce::new(app.clone(), &interaction, sprint)

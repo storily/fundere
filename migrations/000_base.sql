@@ -11,8 +11,10 @@ CREATE TYPE channel_t AS (
 
 CREATE DOMAIN channel AS channel_t
 CHECK (
-	(VALUE).guild_id IS NOT NULL AND
-	(VALUE).channel_id IS NOT NULL
+	(VALUE).guild_id IS NOT NULL
+	AND (VALUE).guild_id > 0
+	AND (VALUE).channel_id IS NOT NULL
+	AND (VALUE).channel_id > 0
 );
 
 CREATE TYPE member_t AS (
@@ -21,6 +23,16 @@ CREATE TYPE member_t AS (
 );
 
 CREATE DOMAIN member AS member_t CHECK (
-	(VALUE).guild_id IS NOT NULL AND
-	(VALUE).user_id IS NOT NULL
+	(VALUE).guild_id IS NOT NULL
+	AND (VALUE).guild_id > 0
+	AND (VALUE).user_id IS NOT NULL
+	AND (VALUE).user_id > 0
+);
+
+CREATE TYPE message_t AS (channel channel, message_id int8);
+
+CREATE DOMAIN "message" AS message_t CHECK (
+	(VALUE).channel IS NOT NULL
+	AND (VALUE).message_id IS NOT NULL
+	AND (VALUE).message_id > 0
 );
