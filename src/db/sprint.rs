@@ -211,7 +211,7 @@ impl Sprint {
 	pub async fn update_status(&self, app: App, status: SprintStatus) -> Result<()> {
 		app.db
 			.query(
-				"UPDATE sprints SET status = $2 WHERE id = $1",
+				"UPDATE sprints SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
 				&[&self.id, &status],
 			)
 			.await
@@ -224,7 +224,7 @@ impl Sprint {
 	pub async fn set_announce(&self, app: App, message: Message) -> Result<()> {
 		app.db
 			.query(
-				"UPDATE sprints SET announce = $2 WHERE id = $1",
+				"UPDATE sprints SET announce = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
 				&[&self.id, &message],
 			)
 			.await
@@ -282,7 +282,7 @@ impl Sprint {
 	) -> Result<()> {
 		app.db
 			.query(
-				&format!("UPDATE sprint_participants SET {column} = $3 WHERE sprint_id = $1 AND (member) = $2::member"),
+				&format!("UPDATE sprint_participants SET {column} = $3, updated_at = CURRENT_TIMESTAMP WHERE sprint_id = $1 AND (member) = $2::member"),
 				&[&self.id, &member, &words],
 			)
 			.await
