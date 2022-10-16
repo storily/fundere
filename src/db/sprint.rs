@@ -327,6 +327,36 @@ impl Sprint {
 		self.ending_at() - now
 	}
 
+	pub fn status_text(&self, announce: bool) -> String {
+		let starting_at = self
+			.starting_at
+			.with_timezone(&chrono_tz::Pacific::Auckland)
+			.format("%H:%M:%S");
+
+		let shortid = self.shortid;
+		let duration = self.formatted_duration();
+
+		let starting_in = self.starting_in();
+		let starting_in_disp = if starting_in <= Duration::zero() {
+			"now".into()
+		} else {
+			format!(
+				"in {}",
+				format_duration(round_duration_to_seconds(starting_in))
+			)
+		};
+
+		let prefix = if announce {
+			"⏱️  New sprint!"
+		} else {
+			"⏱️  Sprint"
+		};
+
+		format!(
+			"{prefix} `{shortid}` is starting {starting_in_disp} (at {starting_at}), going for {duration}."
+		)
+	}
+
 	pub async fn summary_text(&self, app: App) -> Result<String> {
 		let started_at = self
 			.starting_at

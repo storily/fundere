@@ -36,7 +36,9 @@ use crate::{
 };
 
 use super::{
-	action::{CommandAck, SprintLeft, SprintSummary, SprintWordsEnd, SprintWordsStart},
+	action::{
+		CommandAck, SprintLeft, SprintSummary, SprintUpdate, SprintWordsEnd, SprintWordsStart,
+	},
 	App,
 };
 
@@ -281,8 +283,10 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 
 	sprint.join(app.clone(), member).await?;
 
-	app.do_action(SprintJoined::new(&interaction, sprint))
+	app.do_action(SprintJoined::new(&interaction, &sprint))
 		.await?;
+
+	app.do_action(SprintUpdate::new(&sprint)).await?;
 
 	Ok(())
 }
@@ -314,6 +318,8 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 		sprint.cancel(app.clone()).await?;
 		app.do_action(SprintCancelled::new(&interaction, sprint.shortid, user))
 			.await?;
+	} else {
+		app.do_action(SprintUpdate::new(&sprint)).await?;
 	}
 
 	Ok(())

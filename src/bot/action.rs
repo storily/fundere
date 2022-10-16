@@ -42,18 +42,18 @@ macro_rules! action {
 }
 
 action!(
-	calc_result : CalcResult,
-	command_ack : CommandAck,
-	command_error : CommandError,
-	sprint_announce : SprintAnnounce,
-	sprint_cancelled : SprintCancelled,
-	sprint_end : SprintEnd,
-	sprint_joined : SprintJoined,
-	sprint_left : SprintLeft,
-	sprint_start : SprintStart,
-	sprint_summary : SprintSummary,
-	sprint_update : SprintUpdate,
-	sprint_warning : SprintWarning,
-	sprint_words_end : SprintWordsEnd,
-	sprint_words_start : SprintWordsStart
+	calc_result: CalcResult,
+	command_ack: CommandAck,
+	command_error: CommandError,
+	sprint_announce: SprintAnnounce,
+	sprint_cancelled: SprintCancelled,
+	sprint_end: SprintEnd,
+	sprint_joined: SprintJoined,
+	sprint_left: SprintLeft,
+	sprint_start: SprintStart,
+	sprint_summary: SprintSummary,
+	sprint_update: SprintUpdate,
+	sprint_warning: SprintWarning,
+	sprint_words_end: SprintWordsEnd,
+	sprint_words_start: SprintWordsStart
 );

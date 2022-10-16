@@ -1,8 +1,8 @@
 use miette::Result;
-use twilight_mention::Mention;
-use twilight_model::{application::interaction::Interaction, user::User};
+use tracing::warn;
+use uuid::Uuid;
 
-use crate::bot::context::{GenericResponse, GenericResponseData};
+use crate::db::sprint::Sprint;
 
 use super::{Action, ActionClass, Args};
 
@@ -12,16 +12,16 @@ pub struct SprintUpdate {
 }
 
 impl SprintUpdate {
-	#[tracing::instrument(name = "SprintUpdate", skip(interaction))]
+	#[tracing::instrument(name = "SprintUpdate")]
 	pub fn new(sprint: &Sprint) -> Action {
-		ActionClass::SprintUpdate(Self {
-			sprint: sprint.id,
-		})
-		.into()
+		ActionClass::SprintUpdate(Self { sprint: sprint.id }).into()
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
-		warn!("todo");
+		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
+		let content = sprint.status_text(true /* if announce can be edited */);
+
+		warn!(?content, "TODO: update announce");
 		Ok(())
 		// app.send_response(self.0).await.map(drop)
 	}

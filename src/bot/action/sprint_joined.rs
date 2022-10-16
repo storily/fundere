@@ -19,7 +19,7 @@ pub struct SprintJoined(GenericResponse);
 
 impl SprintJoined {
 	#[tracing::instrument(name = "SprintJoined", skip(interaction))]
-	pub fn new(interaction: &Interaction, sprint: Sprint) -> Action {
+	pub fn new(interaction: &Interaction, sprint: &Sprint) -> Action {
 		let Sprint { id, shortid, .. } = sprint;
 		ActionClass::SprintJoined(Self(GenericResponse::from_interaction(
 			interaction,

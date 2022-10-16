@@ -1,5 +1,4 @@
 use chrono::Duration;
-use humantime::format_duration;
 use miette::{miette, Context, Result};
 use tracing::debug;
 use twilight_model::application::{
@@ -12,7 +11,7 @@ use crate::{
 		context::{GenericResponse, GenericResponseData, Timer},
 		utils::{
 			action_row,
-			time::{round_duration_to_seconds, ChronoDurationSaturatingSub},
+			time::ChronoDurationSaturatingSub,
 		},
 		App,
 	},
@@ -32,28 +31,6 @@ impl SprintAnnounce {
 		if sprint.status >= SprintStatus::Announced {
 			return Err(miette!("Bug: went to announce sprint but it was already"));
 		}
-
-		let starting_at = sprint
-			.starting_at
-			.with_timezone(&chrono_tz::Pacific::Auckland)
-			.format("%H:%M:%S");
-
-		let shortid = sprint.shortid;
-		let duration = sprint.formatted_duration();
-
-		let starting_in = sprint.starting_in();
-		let starting_in_disp = if starting_in <= Duration::zero() {
-			"now".into()
-		} else {
-			format!(
-				"in {}",
-				format_duration(round_duration_to_seconds(starting_in))
-			)
-		};
-
-		let content = format!(
-			"⏱️  New sprint! `{shortid}` is starting {starting_in_disp} (at {starting_at}), going for {duration}."
-		);
 
 		let components = action_row(vec![
 			Component::Button(Button {
@@ -80,7 +57,7 @@ impl SprintAnnounce {
 
 		let warning_in = sprint.warning_in();
 		if !warning_in.is_zero() {
-			debug!("set up sprint warn timer");
+			debug!(?warning_in, "set up sprint warn timer");
 			app.send_timer(Timer::new_after(
 				// UNWRAP: warning_in uses saturating_sub, will never be negative
 				warning_in.to_std().unwrap(),
@@ -89,7 +66,8 @@ impl SprintAnnounce {
 			.await?;
 		}
 
-		debug!("set up sprint start timer");
+		let starting_in = sprint.starting_in();
+		debug!(?starting_in, "set up sprint start timer");
 		app.send_timer(Timer::new_after(
 			starting_in.positive_or(Duration::zero()).to_std().unwrap(),
 			SprintStart::new(&sprint),
@@ -97,7 +75,7 @@ impl SprintAnnounce {
 		.await?;
 
 		Ok(GenericResponseData {
-			content: Some(content),
+			content: Some(sprint.status_text(true)),
 			components,
 			..Default::default()
 		})
