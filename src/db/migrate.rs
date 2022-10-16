@@ -17,6 +17,7 @@ const MIGRATIONS: &[(&str, &str)] = &[
 	migration!("002_errors"),
 ];
 
+#[cfg(debug_assertions)]
 #[tracing::instrument(skip(db))]
 pub async fn drop(db: &Client) -> Result<()> {
 	db.batch_execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public")
