@@ -40,13 +40,8 @@ jobs:
       with:
         tool: cross
 
-    - uses: rui314/setup-mold@v1
-      with:
-        mold-version: 1.4.2
-        make-default: true
-
-    - name: Configure cargo
-      run: sed -i 's|/usr/bin/mold|'$(which mold)'|' .cargo/config.toml
+    - name: Deconfigure cargo
+      run: rm .cargo/config.toml
 
     - name: Configure caching
       uses: actions/cache@v3
