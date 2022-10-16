@@ -10,6 +10,7 @@ pub use self::sprint_joined::SprintJoined;
 pub use self::sprint_left::SprintLeft;
 pub use self::sprint_start::SprintStart;
 pub use self::sprint_summary::SprintSummary;
+pub use self::sprint_update::SprintUpdate;
 pub use self::sprint_warning::SprintWarning;
 pub use self::sprint_words_end::SprintWordsEnd;
 pub use self::sprint_words_start::SprintWordsStart;
@@ -26,6 +27,7 @@ pub mod sprint_joined;
 pub mod sprint_left;
 pub mod sprint_start;
 pub mod sprint_summary;
+pub mod sprint_update;
 pub mod sprint_warning;
 pub mod sprint_words_end;
 pub mod sprint_words_start;
@@ -51,6 +53,7 @@ impl Action {
 			SprintLeft(data) => data.handle(args).await,
 			SprintStart(data) => data.handle(args).await,
 			SprintSummary(data) => data.handle(args).await,
+			SprintUpdate(data) => data.handle(args).await,
 			SprintWarning(data) => data.handle(args).await,
 			SprintWordsStart(data) => data.handle(args).await,
 			SprintWordsEnd(data) => data.handle(args).await,
@@ -81,6 +84,7 @@ pub enum ActionClass {
 	SprintLeft(SprintLeft),
 	SprintStart(SprintStart),
 	SprintSummary(SprintSummary),
+	SprintUpdate(SprintUpdate),
 	SprintWarning(SprintWarning),
 	SprintWordsStart(SprintWordsStart),
 	SprintWordsEnd(SprintWordsEnd),
