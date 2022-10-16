@@ -17,11 +17,11 @@ jobs:
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
+            test: true
           - target: x86_64-unknown-linux-musl
+            test: true
           - target: aarch64-unknown-linux-musl
-            use-cross: true
           - target: aarch64-unknown-linux-gnu
-            use-cross: true
 
     runs-on: ubuntu-latest
     name: ${{ matrix.target }}
@@ -34,15 +34,7 @@ jobs:
         rustup toolchain install --profile minimal --no-self-update stable
         rustup target add ${{ matrix.target }}
         rustup default stable
-
-    - name: Install cross
-      if: "matrix.use-cross"
-      uses: taiki-e/install-action@v1
-      with:
-        tool: cross
-
-    - name: Deconfigure cargo
-      run: rm .cargo/config.toml
+        rm .cargo/config.toml
 
     - name: Configure caching
       uses: actions/cache@v3
@@ -55,18 +47,13 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
 
     - name: Install musl-tools
-      if: ${{ matrix.target == 'x86_64-unknown-linux-musl' }}
+      if: ${{ endsWith(matrix.target, 'musl') }}
       run: sudo apt install -y musl-tools
 
-    - name: Test
-      if: "!matrix.use-cross"
+    - if: matrix.test
       run: cargo test
 
-    - if: "matrix.use-cross"
-      run: cross build --target ${{ matrix.target }} --release
-
-    - if: "!matrix.use-cross"
-      run: cargo build --target ${{ matrix.target }} --release
+    - run: cargo build --target ${{ matrix.target }} --release
 
     - name: Upload output
       uses: actions/upload-artifact@v3
