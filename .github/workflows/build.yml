@@ -9,7 +9,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
 
 jobs:
   build:
@@ -32,9 +31,9 @@ jobs:
 
     - name: Configure toolchain
       run: |
-        rustup toolchain install --profile minimal --no-self-update nightly
-        rustup default nightly
+        rustup toolchain install --profile minimal --no-self-update stable
         rustup target add ${{ matrix.target }}
+        rustup default stable
 
     - name: Install cross
       uses: taiki-e/install-action@v1
@@ -53,7 +52,7 @@ jobs:
 
     - name: Install musl-tools
       if: ${{ matrix.target == 'x86_64-unknown-linux-musl' }}
-      run: sudo apt-get install -y musl-tools
+      run: sudo apt install -y musl-tools
 
     - name: Test
       if: "!matrix.use-cross"
