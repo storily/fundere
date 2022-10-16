@@ -22,7 +22,7 @@ futures-util = "0.3.24"
 humantime = "2.1.0"
 itertools = "0.10.5"
 knuffel = "2.0.0"
-miette = { version = "5.3.0", features = ["fancy"] }
+miette = { version = "4.7.1", features = ["fancy"] }
 pg_interval = "0.4.1"
 postgres-types = { version = "0.2.4", features = ["derive", "with-uuid-1", "array-impls", "with-chrono-0_4"] }
 tokio = { version = "1.21.2", features = ["full"] }
