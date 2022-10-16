@@ -37,3 +37,7 @@ twilight-model = "0.13.5"
 twilight-standby = "0.13.2"
 twilight-util = { version = "0.13.3", features = ["permission-calculator", "builder", "link"] }
 uuid = { version = "1.2.1", features = ["v4"] }
+
+[profile.release]
+lto = true
+strip = "debuginfo"
