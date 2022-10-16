@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use chrono::{Duration, Utc};
+use futures_util::future::try_join_all;
 use miette::{miette, Context, IntoDiagnostic, Result};
 use tracing::{debug, error, info, warn};
 use twilight_model::application::{
@@ -39,6 +40,7 @@ use super::{
 	action::{
 		CommandAck, SprintLeft, SprintSummary, SprintUpdate, SprintWordsEnd, SprintWordsStart,
 	},
+	context::{GenericResponse, GenericResponseData},
 	App,
 };
 
@@ -63,6 +65,7 @@ pub fn command() -> Result<Command> {
 			.option(when)
 			.option(duration)
 	})
+	.option(SubCommandBuilder::new("list", "List all current sprints"))
 	.validate()
 	.into_diagnostic()
 	.map(|cmd| cmd.build())
@@ -85,6 +88,9 @@ pub async fn on_command(
 		Some(("new", opts)) => sprint_new(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: new")?,
+		Some(("list", opts)) => sprint_list(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: list")?,
 		Some((other, _)) => warn!("unhandled sprint subcommand: {other}"),
 		_ => error!("unreachable bare sprint command"),
 	}
@@ -429,6 +435,36 @@ async fn sprint_set_words(
 	} else {
 		app.do_action(CommandAck::new(&interaction)).await?;
 	}
+
+	Ok(())
+}
+
+async fn sprint_list(
+	app: App,
+	interaction: &Interaction,
+	_options: &[CommandDataOption],
+) -> Result<()> {
+	let sprints = Sprint::get_all_current(app.clone()).await?;
+
+	let content = if sprints.is_empty() {
+		"No sprints are currently running.".to_string()
+	} else {
+		try_join_all(sprints.into_iter().map(|sprint| {
+			let app = app.clone();
+			async move { sprint.status_text(app, false).await }
+		}))
+		.await?
+		.join("\n")
+	};
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(content),
+			..Default::default()
+		},
+	))
+	.await?;
 
 	Ok(())
 }

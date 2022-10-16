@@ -75,7 +75,7 @@ impl SprintAnnounce {
 		.await?;
 
 		Ok(GenericResponseData {
-			content: Some(sprint.status_text(true)),
+			content: Some(sprint.status_text(app, true).await?),
 			components,
 			..Default::default()
 		})

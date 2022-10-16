@@ -19,7 +19,7 @@ impl SprintUpdate {
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		let sprint = Sprint::get_current(app.clone(), self.sprint).await?;
-		let content = sprint.status_text(true /* if announce can be edited */);
+		let content = sprint.status_text(app, false).await?;
 
 		warn!(?content, "TODO: update announce");
 		Ok(())

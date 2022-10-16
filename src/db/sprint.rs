@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use chrono::{DateTime, Duration, TimeZone, Utc};
+use futures_util::future::try_join_all;
 use humantime::{format_duration, FormattedDuration};
 use itertools::Itertools;
 use miette::{miette, Context, IntoDiagnostic, Result};
@@ -327,7 +328,7 @@ impl Sprint {
 		self.ending_at() - now
 	}
 
-	pub fn status_text(&self, announce: bool) -> String {
+	pub async fn status_text(&self, app: App, announce: bool) -> Result<String> {
 		let starting_at = self
 			.starting_at
 			.with_timezone(&chrono_tz::Pacific::Auckland)
@@ -346,15 +347,16 @@ impl Sprint {
 			)
 		};
 
-		let prefix = if announce {
-			"⏱️  New sprint!"
+		Ok(if announce {
+			format!(
+				"⏱️  New sprint! `{shortid}` is starting {starting_in_disp} (at {starting_at}), going for {duration}."
+			)
 		} else {
-			"⏱️  Sprint"
-		};
-
-		format!(
-			"{prefix} `{shortid}` is starting {starting_in_disp} (at {starting_at}), going for {duration}."
-		)
+			let participants = try_join_all(self.participants(app.clone()).await?.into_iter().map(|p| p.member.name(app.clone()))).await?.join(", ");
+			format!(
+				"⏱️ Sprint `{shortid}` starts at {starting_at}, lasts for {duration}, with {participants}."
+			)
+		})
 	}
 
 	pub async fn summary_text(&self, app: App) -> Result<String> {
@@ -370,8 +372,7 @@ impl Sprint {
 		let participants = self.participants(app.clone()).await?;
 		let mut summaries = Vec::with_capacity(participants.len());
 		for p in participants {
-			let member = p.member.to_member(app.clone()).await?;
-			let name = member.nick.unwrap_or_else(|| member.user.name);
+			let name = p.member.name(app.clone()).await?;
 			let words = p
 				.words_end
 				.map_or(0, |end| end - p.words_start.unwrap_or(0));

@@ -34,6 +34,11 @@ impl Member {
 			.await
 			.into_diagnostic()
 	}
+
+	pub async fn name(self, app: App) -> Result<String> {
+		let member = self.to_member(app).await?;
+		Ok(member.nick.unwrap_or_else(|| member.user.name))
+	}
 }
 
 impl Mention<Id<UserMarker>> for Member {
