@@ -34,6 +34,7 @@ jobs:
         rustup target add ${{ matrix.target }}
         rustup default stable
         rm .cargo/config.toml
+        sudo apt install -y musl-tools
 
     - name: Configure caching
       uses: actions/cache@v3
