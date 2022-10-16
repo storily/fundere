@@ -66,5 +66,5 @@ jobs:
       with:
         retention-days: 7
         path: "target/${{ matrix.target }}/release/fundere"
-        name: fundere_${{ matrix.target }}_${{ github.ref }}
+        name: fundere_${{ matrix.target }}_${{ github.sha }}
 
