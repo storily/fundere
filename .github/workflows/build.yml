@@ -40,6 +40,11 @@ jobs:
       with:
         tool: cross
 
+    - uses: rui314/setup-mold@v1
+      with:
+        mold-version: 1.4.2
+        make-default: true
+
     - name: Configure caching
       uses: actions/cache@v3
       with:
