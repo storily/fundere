@@ -1,3 +1,9 @@
+-- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- CREATE FUNCTION gen_random_uuid()
+-- RETURNS uuid
+-- LANGUAGE SQL STABLE PARALLEL SAFE
+-- AS 'select uuid_generate_v4()';
+
 CREATE TABLE migrations (
 	n serial primary key,
 	name text unique,
