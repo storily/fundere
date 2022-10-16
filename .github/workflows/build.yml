@@ -36,6 +36,7 @@ jobs:
         rustup default stable
 
     - name: Install cross
+      if: "matrix.use-cross"
       uses: taiki-e/install-action@v1
       with:
         tool: cross
@@ -61,8 +62,11 @@ jobs:
       if: "!matrix.use-cross"
       run: cargo test
 
-    - name: Build
+    - if: "matrix.use-cross"
       run: cross build --target ${{ matrix.target }} --release
+
+    - if: "!matrix.use-cross"
+      run: cargo build --target ${{ matrix.target }} --release
 
     - name: Upload output
       uses: actions/upload-artifact@v3
