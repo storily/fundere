@@ -1,0 +1,52 @@
+name: Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+        rust:
+          - stable
+          - nightly
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure toolchain
+      run: |
+        rustup toolchain install --profile minimal --no-self-update ${{ matrix.rust }}
+        rustup target add ${{ matrix.target }}
+        rustup default ${{ matrix.rust }}
+        rm .cargo/config.toml
+        sudo apt install -y musl-tools
+
+    - name: Configure caching
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-test-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-test-${{ matrix.target }}-
+          ${{ runner.os }}-cargo-test-
+
+    - name: Test
+      run: cargo test
