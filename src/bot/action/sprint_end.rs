@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use miette::{miette, Result};
+use tracing::debug;
 use twilight_mention::Mention;
 use twilight_model::application::component::{button::ButtonStyle, Button, Component};
 use uuid::Uuid;
@@ -25,6 +26,10 @@ impl SprintEnd {
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
 		let sprint = Sprint::get(app.clone(), self.0).await?;
+		if sprint.is_cancelled() {
+			debug!("sprint was cancelled, not ending");
+			return Ok(());
+		}
 		if sprint.status >= SprintStatus::Ended {
 			return Err(miette!("Bug: went to end sprint but it was already"));
 		}
