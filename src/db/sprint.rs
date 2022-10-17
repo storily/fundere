@@ -283,7 +283,7 @@ impl Sprint {
 	) -> Result<()> {
 		app.db
 			.query(
-				&format!("UPDATE sprint_participants SET {column} = $3, updated_at = CURRENT_TIMESTAMP WHERE sprint_id = $1 AND (member) = $2::member"),
+				&format!("UPDATE sprint_participants SET {column} = $3 WHERE sprint_id = $1 AND (member) = $2::member"),
 				&[&self.id, &member, &words],
 			)
 			.await
