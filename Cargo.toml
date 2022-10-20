@@ -15,7 +15,7 @@ exclude = ["/.github"]
 
 [dependencies]
 chrono = "0.4.22"
-chrono-tz = "0.6.3"
+chrono-tz = "0.7.0"
 clap = { version = "4.0.15", features = ["derive", "cargo"] }
 fend-core = "1.1.1"
 futures-util = "0.3.24"
