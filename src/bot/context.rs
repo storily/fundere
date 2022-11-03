@@ -7,7 +7,7 @@ use std::{
 use miette::{miette, Context, IntoDiagnostic, Result};
 use tokio::{
 	sync::mpsc::Sender,
-	time::{sleep_until, timeout, Instant as TokioInstant, Sleep},
+	time::{sleep_until, timeout, Instant as TokioInstant, Sleep, sleep},
 };
 use tokio_postgres::Client as PgClient;
 use tracing::{debug, error};
@@ -138,6 +138,9 @@ impl App {
 					.await
 					.into_diagnostic()
 					.wrap_err("create response")?;
+
+				// wait for discord to settle
+				sleep(Duration::from_millis(100)).await;
 
 				return self
 					.get_response_message(&token)
