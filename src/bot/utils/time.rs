@@ -1,9 +1,9 @@
 use std::{ops::Sub, str::FromStr};
 
-use chrono::{naive::NaiveTime, Duration};
+use chrono::{naive::NaiveTime, DateTime, Duration, Utc};
 use miette::{IntoDiagnostic, Result};
 
-pub trait ChronoDurationSaturatingSub {
+pub trait ChronoDurationExt {
 	fn positive_or(self, default: Duration) -> Duration;
 	fn saturating_sub(self, other: Self) -> Duration;
 
@@ -15,9 +15,11 @@ pub trait ChronoDurationSaturatingSub {
 		// UNWRAP: it will always be zero or above
 		self.saturating_sub(other).to_std().unwrap()
 	}
+
+	fn round_to_seconds(self) -> std::time::Duration;
 }
 
-impl ChronoDurationSaturatingSub for Duration {
+impl ChronoDurationExt for Duration {
 	fn positive_or(self, default: Duration) -> Duration {
 		if self > Self::zero() {
 			self
@@ -26,14 +28,29 @@ impl ChronoDurationSaturatingSub for Duration {
 		}
 	}
 
-	// It's annoyingly hard to define this on the trait, but there's only one impl of this so ehhh.
 	fn saturating_sub(self, other: Self) -> Duration {
 		(self - other).positive_or(Duration::zero())
 	}
+
+	fn round_to_seconds(self) -> std::time::Duration {
+		std::time::Duration::from_secs(self.num_milliseconds().max(0) as u64 / 1000)
+	}
 }
 
-pub fn round_duration_to_seconds(duration: Duration) -> std::time::Duration {
-	std::time::Duration::from_secs(duration.num_milliseconds().max(0) as u64 / 1000)
+pub trait ChronoDateTimeExt {
+	/// Duration since the given time, or None if it's in the future.
+	fn elapsed(&self) -> Result<Option<std::time::Duration>>;
+}
+
+impl ChronoDateTimeExt for DateTime<Utc> {
+	fn elapsed(&self) -> Result<Option<std::time::Duration>> {
+		let since = self.signed_duration_since(Utc::now());
+		if since > Duration::zero() {
+			since.to_std().map(Some).into_diagnostic()
+		} else {
+			Ok(None)
+		}
+	}
 }
 
 pub fn parse_when_relative_to(now: NaiveTime, s: &str) -> Result<NaiveTime> {

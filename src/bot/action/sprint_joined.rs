@@ -7,7 +7,7 @@ use twilight_model::application::{
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData},
-		utils::action_row,
+		utils::{action_row, time::ChronoDateTimeExt},
 	},
 	db::sprint::Sprint,
 };
@@ -19,9 +19,9 @@ pub struct SprintJoined(GenericResponse);
 
 impl SprintJoined {
 	#[tracing::instrument(name = "SprintJoined", skip(interaction))]
-	pub fn new(interaction: &Interaction, sprint: &Sprint) -> Action {
+	pub fn new(interaction: &Interaction, sprint: &Sprint) -> Result<Action> {
 		let Sprint { id, shortid, .. } = sprint;
-		ActionClass::SprintJoined(Self(GenericResponse::from_interaction(
+		Ok(ActionClass::SprintJoined(Self(GenericResponse::from_interaction(
 			interaction,
 			GenericResponseData {
 				ephemeral: true,
@@ -46,8 +46,8 @@ impl SprintJoined {
 				]),
 				..Default::default()
 			},
-		)))
-		.into()
+		).with_age(sprint.created_at.elapsed()?)))
+		.into())
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {

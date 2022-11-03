@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData},
-		utils::{action_row, time::round_duration_to_seconds},
+		utils::{action_row, time::ChronoDurationExt},
 	},
 	db::sprint::{Sprint, SprintStatus},
 };
@@ -41,7 +41,7 @@ impl SprintWarning {
 		} else {
 			format!(
 				"in {}",
-				format_duration(round_duration_to_seconds(starting_in))
+				format_duration(starting_in.round_to_seconds())
 			)
 		};
 

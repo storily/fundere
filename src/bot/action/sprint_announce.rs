@@ -11,7 +11,7 @@ use crate::{
 		context::{GenericResponse, GenericResponseData, Timer},
 		utils::{
 			action_row,
-			time::ChronoDurationSaturatingSub,
+			time::{ChronoDurationExt, ChronoDateTimeExt},
 		},
 		App,
 	},
@@ -87,7 +87,7 @@ impl SprintAnnounce {
 			response: Box::new(GenericResponse::from_interaction(
 				interaction,
 				Self::prepare(app, &sprint).await?,
-			)),
+			).with_age(sprint.created_at.elapsed()?)),
 			sprint: Box::new(sprint),
 		})
 		.into())

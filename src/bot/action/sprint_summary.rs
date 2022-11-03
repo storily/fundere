@@ -4,7 +4,7 @@ use twilight_model::application::interaction::Interaction;
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData},
-		App,
+		App, utils::time::ChronoDateTimeExt,
 	},
 	db::sprint::{Sprint, SprintStatus},
 };
@@ -28,7 +28,7 @@ impl SprintSummary {
 					content: Some(sprint.summary_text(app).await?),
 					..Default::default()
 				},
-			)))
+			).with_age(sprint.created_at.elapsed()?)))
 			.into(),
 		)
 	}

@@ -7,7 +7,7 @@ use std::{
 use miette::{miette, Context, IntoDiagnostic, Result};
 use tokio::{
 	sync::mpsc::Sender,
-	time::{sleep_until, timeout, Instant as TokioInstant, Sleep, sleep},
+	time::{sleep, sleep_until, timeout, Instant as TokioInstant, Sleep},
 };
 use tokio_postgres::Client as PgClient;
 use tracing::{debug, error};
@@ -227,6 +227,16 @@ impl GenericResponse {
 			message: sprint.announce.map(MessageForm::Db),
 			data,
 		}
+	}
+
+	pub fn with_age(mut self, age: Option<Duration>) -> Self {
+		if let Some(age) = age {
+			if age > Duration::from_secs(15 * 60) {
+				self.interaction = None;
+			}
+		}
+
+		self
 	}
 }
 

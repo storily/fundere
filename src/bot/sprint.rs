@@ -289,7 +289,7 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 
 	sprint.join(app.clone(), member).await?;
 
-	app.do_action(SprintJoined::new(&interaction, &sprint))
+	app.do_action(SprintJoined::new(&interaction, &sprint)?)
 		.await?;
 
 	app.do_action(SprintUpdate::new(&sprint)).await?;
@@ -311,7 +311,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 
 	sprint.leave(app.clone(), member).await?;
 
-	app.do_action(SprintLeft::new(&interaction, &sprint))
+	app.do_action(SprintLeft::new(&interaction, &sprint)?)
 		.await?;
 
 	if sprint.participants(app.clone()).await?.is_empty() {
@@ -322,7 +322,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 			.ok_or(miette!("can only leave sprint from a guild"))?;
 
 		sprint.cancel(app.clone()).await?;
-		app.do_action(SprintCancelled::new(&interaction, sprint.shortid, user))
+		app.do_action(SprintCancelled::new(&interaction, &sprint, user)?)
 			.await?;
 	} else {
 		app.do_action(SprintUpdate::new(&sprint)).await?;
@@ -349,7 +349,7 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 
 	sprint.cancel(app.clone()).await?;
 
-	app.do_action(SprintCancelled::new(&interaction, sprint.shortid, user))
+	app.do_action(SprintCancelled::new(&interaction, &sprint, user)?)
 		.await?;
 
 	Ok(())

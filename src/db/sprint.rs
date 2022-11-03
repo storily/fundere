@@ -12,10 +12,7 @@ use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::id::{marker::UserMarker, Id};
 use uuid::Uuid;
 
-use crate::bot::{
-	utils::time::{round_duration_to_seconds, ChronoDurationSaturatingSub},
-	App,
-};
+use crate::bot::{utils::time::ChronoDurationExt, App};
 
 use super::{member::Member, message::Message};
 
@@ -307,7 +304,7 @@ impl Sprint {
 	/// Formatted duration, excluding sign
 	pub fn formatted_duration(&self) -> FormattedDuration {
 		let duration = self.duration();
-		format_duration(round_duration_to_seconds(duration))
+		format_duration(duration.round_to_seconds())
 	}
 
 	pub fn starting_in(&self) -> Duration {
@@ -341,10 +338,7 @@ impl Sprint {
 		let starting_in_disp = if starting_in <= Duration::zero() {
 			"now".into()
 		} else {
-			format!(
-				"in {}",
-				format_duration(round_duration_to_seconds(starting_in))
-			)
+			format!("in {}", format_duration(starting_in.round_to_seconds()))
 		};
 
 		Ok(if announce {
@@ -352,7 +346,14 @@ impl Sprint {
 				"⏱️  New sprint! `{shortid}` is starting {starting_in_disp} (at {starting_at}), going for {duration}."
 			)
 		} else {
-			let participants = try_join_all(self.participants(app.clone()).await?.into_iter().map(|p| p.member.name(app.clone()))).await?.join(", ");
+			let participants = try_join_all(
+				self.participants(app.clone())
+					.await?
+					.into_iter()
+					.map(|p| p.member.name(app.clone())),
+			)
+			.await?
+			.join(", ");
 			format!(
 				"⏱️ Sprint `{shortid}` starts at {starting_at}, lasts for {duration}, with {participants}."
 			)
