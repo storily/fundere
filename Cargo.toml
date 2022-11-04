@@ -23,7 +23,7 @@ humantime = "2.1.0"
 itertools = "0.10.5"
 knuffel = "2.0.0"
 miette = { version = "4.7.1", features = ["fancy"] }
-pg_interval = "0.4.1"
+pg_interval = "0.4.2"
 postgres-types = { version = "0.2.4", features = ["derive", "with-uuid-1", "array-impls", "with-chrono-0_4"] }
 rand = "0.8.5"
 regex = "1.6.0"
