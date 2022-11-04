@@ -461,6 +461,8 @@ dependencies = [
  "miette",
  "pg_interval",
  "postgres-types",
+ "rand",
+ "regex",
  "tokio",
  "tokio-postgres",
  "tracing",

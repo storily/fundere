@@ -19,6 +19,7 @@ use self::{action::CommandError, context::Timer};
 
 pub mod action;
 pub mod calc;
+pub mod choose;
 pub mod context;
 pub mod debug;
 pub mod sprint;
@@ -40,7 +41,12 @@ pub async fn start(config: Config) -> Result<()> {
 
 		info!("register commands: calc, debug, sprint");
 		interaction_client
-			.set_global_commands(&[calc::command()?, debug::command()?, sprint::command()?])
+			.set_global_commands(&[
+				calc::command()?,
+				choose::command()?,
+				debug::command()?,
+				sprint::command()?,
+			])
 			.exec()
 			.await
 			.into_diagnostic()?;
@@ -154,6 +160,9 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					"calc" => calc::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: calc"),
+					"choose" => choose::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: choose"),
 					cmd => {
 						warn!("unhandled command: {cmd}");
 						Ok(())
