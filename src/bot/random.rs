@@ -99,7 +99,7 @@ pub fn command() -> Result<Command> {
 					),
 					("Tarocco Bolognese honour aspects, plus fool", "bolognese-h"),
 					(
-						"Tarocco Minchiate 97-card values (1-10, JKQK)",
+						"Tarocco Minchiate 97-card values (1-10, [MP]KQK)",
 						"minchiate-v",
 					),
 					("Tarocco Minchiate honour aspects", "minchiate-h"),
@@ -112,6 +112,35 @@ pub fn command() -> Result<Command> {
 			.option(IntegerBuilder::new(
 				"count",
 				"How many values to get (default: 1)",
+			)),
+	)
+	.option(
+		SubCommandBuilder::new("card", "Get a random playing card or hand of cards")
+			.option(
+				StringBuilder::new("variant", "Which variant to use (default: all)").choices(vec![
+					("Everything (default)", "all"),
+					("Full 52-card english deck", "english"),
+					("Full 52-card french deck", "french"),
+					("Full 52-card german deck", "german"),
+					("Full 52-card italian deck", "italian"),
+					("Full 52-card spanish deck", "spanish"),
+					("Full 52-card swiss deck", "swiss"),
+					("Extended 63-card deck used to play Euchre or 500", "euchre"),
+					("Cartomancy Tarot deck", "tarot"),
+					("Tarot Nouveau 78-card deck", "nouveau"),
+					("Tarocco Siciliano deck", "siciliano"),
+					("Tarocco Bolognese deck", "bolognese"),
+					("Tarocco Minchiate deck", "minchiate"),
+					("Swiss 1JJ deck", "1jj"),
+					("Dashavatara Ganjifa (persia/india) deck", "ganjifa"),
+					("Moghul Ganjifa (persia/india) deck", "moghul"),
+					("Extended Hanafuda (japan/korea) deck", "hanafuda"),
+					("Mahjong (china/japan/southeast asia) tiles", "mahjong"),
+				]),
+			)
+			.option(IntegerBuilder::new(
+				"count",
+				"How many cards to get (default: 1)",
 			)),
 	)
 	.validate()
@@ -142,6 +171,9 @@ pub async fn on_command(
 		Some(("card-value", opts)) => value(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: card-value")?,
+		Some(("card", opts)) => card(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: card")?,
 		Some((other, _)) => warn!("unhandled random subcommand: {other}"),
 		_ => error!("unreachable bare random command"),
 	}
@@ -212,3 +244,24 @@ async fn value(app: App, interaction: &Interaction, options: &[CommandDataOption
 	.map(drop)
 }
 
+async fn card(app: App, interaction: &Interaction, options: &[CommandDataOption]) -> Result<()> {
+	let count = get_integer(options, "count").unwrap_or(1);
+	let variant = get_string(options, "variant").unwrap_or("all");
+	let variant = cards::DeckVariant::from_str(&variant)?;
+
+	let result = variant
+		.hand(count as _)
+		.into_iter()
+		.map(|s| format!("**{}**", s))
+		.join(", ");
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(result),
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
+}
