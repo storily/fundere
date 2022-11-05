@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use miette::{miette, IntoDiagnostic, Result};
-use rand::{distributions::Uniform, Rng};
+use rand::seq::SliceRandom;
 use regex::Regex;
 use tracing::debug;
 use twilight_model::application::{
@@ -79,10 +79,9 @@ pub async fn on_command(
 	}
 
 	debug!(items=?items, ?count, "choosing");
-	let result = rand::thread_rng()
-		.sample_iter(Uniform::from(0..items.len()))
-		.take(count as _)
-		.filter_map(|i| items.get(i))
+	let result = items
+		.choose_multiple(&mut rand::thread_rng(), count as _)
+		.into_iter()
 		.map(|item| format!("**{item}**"))
 		.join(", ");
 

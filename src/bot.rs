@@ -22,6 +22,7 @@ pub mod calc;
 pub mod choose;
 pub mod context;
 pub mod debug;
+pub mod random;
 pub mod sprint;
 pub mod utils;
 
@@ -45,6 +46,7 @@ pub async fn start(config: Config) -> Result<()> {
 				calc::command()?,
 				choose::command()?,
 				debug::command()?,
+				random::command()?,
 				sprint::command()?,
 			])
 			.exec()
@@ -163,6 +165,9 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					"choose" => choose::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: choose"),
+					"random" => random::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: random"),
 					cmd => {
 						warn!("unhandled command: {cmd}");
 						Ok(())
