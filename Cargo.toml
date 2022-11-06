@@ -40,7 +40,7 @@ twilight-mention = "0.14.0"
 twilight-model = "0.14.0"
 twilight-standby = "0.14.0"
 twilight-util = { version = "0.14.0", features = ["permission-calculator", "builder", "link"] }
-url = "2.3.1"
+url = "2.4.0"
 uuid = { version = "1.2.1", features = ["v4"] }
 
 [profile.release]

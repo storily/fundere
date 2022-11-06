@@ -15,6 +15,7 @@ const MIGRATIONS: &[(&str, &str)] = &[
 	migration!("000_base"),
 	migration!("001_sprints"),
 	migration!("002_errors"),
+	migration!("003_projects"),
 ];
 
 #[cfg(debug_assertions)]
