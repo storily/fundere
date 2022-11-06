@@ -232,6 +232,7 @@ async fn handle_interaction_error(
 	task: impl std::future::Future<Output = Result<()>>,
 ) -> Result<()> {
 	if let Err(err) = task.await {
+		error!("interaction error: {err:?}");
 		app.do_action(CommandError::new(app.clone(), interaction, err).await?)
 			.await
 	} else {

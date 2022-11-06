@@ -8,6 +8,7 @@ use miette::{miette, Context, IntoDiagnostic, Result};
 use pg_interval::Interval;
 use postgres_types::{FromSql, ToSql};
 use tokio_postgres::Row;
+use tracing::debug;
 use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::id::{marker::UserMarker, Id};
 use uuid::Uuid;
@@ -122,6 +123,16 @@ impl Sprint {
 			.into_diagnostic()
 			.and_then(Self::from_row)
 			.wrap_err("db: get sprint")
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn get_from_shortid(app: App, shortid: i32) -> Result<Self> {
+		app.db
+			.query_one("SELECT * FROM sprints WHERE shortid = $1", &[&shortid])
+			.await
+			.into_diagnostic()
+			.and_then(Self::from_row)
+			.wrap_err("db: get sprint from shortid")
 	}
 
 	#[tracing::instrument(skip(app))]
@@ -360,6 +371,7 @@ impl Sprint {
 		})
 	}
 
+	#[tracing::instrument(skip(app))]
 	pub async fn summary_text(&self, app: App) -> Result<String> {
 		let started_at = self
 			.starting_at
@@ -382,6 +394,7 @@ impl Sprint {
 		}
 
 		summaries.sort_by_key(|(_, w, _)| *w);
+		debug!(?summaries, "sprint summary");
 		let summary = summaries
 			.into_iter()
 			.map(|(name, words, wpm)| {

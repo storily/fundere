@@ -51,21 +51,33 @@ pub fn command() -> Result<Command> {
 		"Experimental new-gen wordwar/sprint command",
 		CommandType::ChatInput,
 	)
-	.option({
-		let when = StringBuilder::new(
-			"when",
-			"When to start the sprint, either in clock time (08:30), or in relative time (15m)",
-		)
-		.required(true);
-		let duration = IntegerBuilder::new(
-			"duration",
-			"Duration of the sprint in minutes (defaults to 20)",
-		);
+	.option(
 		SubCommandBuilder::new("new", "Schedule a new sprint")
-			.option(when)
-			.option(duration)
-	})
+			.option(
+				StringBuilder::new(
+					"when",
+					"When to start the sprint, either in clock time (08:30), or in relative time (15m)",
+				)
+				.required(true)
+			)
+			.option(
+				IntegerBuilder::new(
+					"duration",
+					"Duration of the sprint in minutes (defaults to 20)",
+				)
+			)
+	)
 	.option(SubCommandBuilder::new("list", "List all current sprints"))
+	.option(
+		SubCommandBuilder::new("summary", "Show the summary of a sprint")
+			.option(
+				IntegerBuilder::new(
+					"sprint",
+					"Short sprint ID, like 3349",
+				)
+				.required(true)
+			)
+	)
 	.validate()
 	.into_diagnostic()
 	.map(|cmd| cmd.build())
@@ -91,6 +103,9 @@ pub async fn on_command(
 		Some(("list", opts)) => sprint_list(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: list")?,
+		Some(("summary", opts)) => sprint_summary(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: summary")?,
 		Some((other, _)) => warn!("unhandled sprint subcommand: {other}"),
 		_ => error!("unreachable bare sprint command"),
 	}
@@ -467,4 +482,27 @@ async fn sprint_list(
 	.await?;
 
 	Ok(())
+}
+
+async fn sprint_summary(
+	app: App,
+	interaction: &Interaction,
+	options: &[CommandDataOption],
+) -> Result<()> {
+	let shortid =
+		get_integer(options, "sprint").ok_or_else(|| miette!("sprint is a required field"))?;
+	debug!(?shortid, "got shortid");
+
+	let sprint = Sprint::get_from_shortid(
+		app.clone(),
+		shortid
+			.try_into()
+			.into_diagnostic()
+			.wrap_err("sprint ID is too large")?,
+	)
+	.await
+	.wrap_err("sprint not found")?;
+
+	app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
+		.await
 }
