@@ -1,10 +1,11 @@
 use std::iter::repeat;
 
 use miette::{GraphicalReportHandler, GraphicalTheme, IntoDiagnostic, Report, Result};
-use twilight_model::application::{
-	component::{button::ButtonStyle, Button, Component},
+use twilight_model::{
+	channel::message::component::{ButtonStyle, Button, Component},
+	application::{
 	interaction::Interaction,
-};
+}};
 use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{

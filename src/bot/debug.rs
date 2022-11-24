@@ -109,7 +109,6 @@ async fn ping_maintainer(app: App, interaction: &Interaction, uuid: &str) -> Res
 	let dm_channel = app
 		.client
 		.create_private_channel(maintainer)
-		.exec()
 		.await
 		.into_diagnostic()?
 		.model()
@@ -131,7 +130,6 @@ async fn ping_maintainer(app: App, interaction: &Interaction, uuid: &str) -> Res
 			error.created_at
 		))
 		.into_diagnostic()?
-		.exec()
 		.await
 		.into_diagnostic()?;
 

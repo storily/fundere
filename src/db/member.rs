@@ -27,7 +27,6 @@ impl Member {
 	pub async fn to_member(self, app: App) -> Result<DiscordMember> {
 		app.client
 			.guild_member(self.into(), self.into())
-			.exec()
 			.await
 			.into_diagnostic()?
 			.model()

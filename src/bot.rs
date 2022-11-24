@@ -51,7 +51,6 @@ pub async fn start(config: Config) -> Result<()> {
 				related::command()?,
 				sprint::command()?,
 			])
-			.exec()
 			.await
 			.into_diagnostic()?;
 	}

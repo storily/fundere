@@ -1,7 +1,7 @@
 use std::{
 	ops::Deref,
 	sync::Arc,
-	time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+	time::{Duration, Instant, SystemTime, UNIX_EPOCH}, future::IntoFuture,
 };
 
 use miette::{miette, Context, IntoDiagnostic, Result};
@@ -18,8 +18,10 @@ use twilight_http::{
 	Client,
 };
 use twilight_model::{
-	application::{component::Component, interaction::Interaction},
-	channel::{embed::Embed, message::MessageFlags, Message},
+	channel::message::component::Component,
+	application::{
+		interaction::Interaction},
+	channel::{message::embed::Embed, message::MessageFlags, Message},
 	http::{
 		attachment::Attachment,
 		interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
@@ -82,7 +84,6 @@ impl App {
 
 					self.client
 						.message(msgid.into(), msgid.into())
-						.exec()
 						.await
 						.into_diagnostic()?
 						.model()
@@ -114,7 +115,6 @@ impl App {
 				return response
 					.data
 					.incept_followup(self.interaction_client().create_followup(&token))?
-					.exec()
 					.await
 					.into_diagnostic()
 					.wrap_err("followup exec")?
@@ -134,7 +134,6 @@ impl App {
 							data: Some(response.data.as_response()),
 						},
 					)
-					.exec()
 					.await
 					.into_diagnostic()
 					.wrap_err("create response")?;
@@ -154,7 +153,6 @@ impl App {
 			response
 				.data
 				.incept_message(self.client.create_message(channel))?
-				.exec()
 				.await
 				.into_diagnostic()
 				.wrap_err("message exec")?
@@ -172,7 +170,7 @@ impl App {
 		let ic = self.interaction_client();
 		match timeout(
 			Duration::from_millis(self.config.internal.response_lookup_timeout),
-			ic.response(token).exec(),
+			ic.response(token).into_future(),
 		)
 		.await
 		{

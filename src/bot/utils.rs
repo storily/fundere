@@ -1,4 +1,4 @@
-use twilight_model::application::component::{ActionRow, Component};
+use twilight_model::channel::message::component::{ActionRow, Component};
 
 pub mod command;
 pub mod time;

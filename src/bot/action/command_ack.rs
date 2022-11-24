@@ -32,7 +32,6 @@ impl CommandAck {
 					data: None,
 				},
 			)
-			.exec()
 			.await
 			.into_diagnostic()?;
 		Ok(())

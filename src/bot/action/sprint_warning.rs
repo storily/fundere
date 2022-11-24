@@ -3,7 +3,7 @@ use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, Result};
 use twilight_mention::Mention;
-use twilight_model::application::component::{button::ButtonStyle, Button, Component};
+use twilight_model::channel::message::component::{ButtonStyle, Button, Component};
 use uuid::Uuid;
 
 use crate::{

@@ -1,6 +1,7 @@
 use miette::Result;
-use twilight_model::application::{
-	component::{button::ButtonStyle, Button, Component},
+use twilight_model::{
+	channel::message::component::{ButtonStyle, Button, Component},
+	application::
 	interaction::Interaction,
 };
 

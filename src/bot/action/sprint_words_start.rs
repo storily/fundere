@@ -1,7 +1,7 @@
 use miette::{miette, IntoDiagnostic, Result};
 use twilight_model::{
+	channel::message::component::{TextInputStyle, Component, TextInput},
 	application::{
-		component::{text_input::TextInputStyle, Component, TextInput},
 		interaction::Interaction,
 	},
 	http::interaction::{InteractionResponse, InteractionResponseType},
@@ -70,7 +70,6 @@ impl SprintWordsStart {
 					),
 				},
 			)
-			.exec()
 			.await
 			.into_diagnostic()?;
 

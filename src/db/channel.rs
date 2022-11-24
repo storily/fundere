@@ -25,7 +25,6 @@ impl Channel {
 	pub async fn to_channel(self, app: App) -> Result<DiscordChannel> {
 		app.client
 			.channel(self.into())
-			.exec()
 			.await
 			.into_diagnostic()?
 			.model()

@@ -1,10 +1,11 @@
 use chrono::Duration;
 use miette::{miette, Context, Result};
 use tracing::debug;
-use twilight_model::application::{
-	component::{button::ButtonStyle, Button, Component},
+use twilight_model::{
+	channel::message::component::{ButtonStyle, Button, Component},
+	application::{
 	interaction::Interaction,
-};
+}};
 
 use crate::{
 	bot::{

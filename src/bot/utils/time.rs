@@ -176,17 +176,23 @@ mod test {
 	fn parses_times_with_seconds() {
 		assert_eq!(
 			parse_when("01:23:45").unwrap(),
-			NaiveTime::from_hms(1, 23, 45)
+			NaiveTime::from_hms_opt(1, 23, 45).unwrap()
 		);
 		assert_eq!(
 			parse_when("1:23:45").unwrap(),
-			NaiveTime::from_hms(1, 23, 45)
+			NaiveTime::from_hms_opt(1, 23, 45).unwrap()
 		);
 	}
 
 	#[test]
 	fn parses_times_without_seconds() {
-		assert_eq!(parse_when("01:23").unwrap(), NaiveTime::from_hms(1, 23, 0));
-		assert_eq!(parse_when("1:23").unwrap(), NaiveTime::from_hms(1, 23, 0));
+		assert_eq!(
+			parse_when("01:23").unwrap(),
+			NaiveTime::from_hms_opt(1, 23, 0).unwrap()
+		);
+		assert_eq!(
+			parse_when("1:23").unwrap(),
+			NaiveTime::from_hms_opt(1, 23, 0).unwrap()
+		);
 	}
 }
