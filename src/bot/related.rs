@@ -56,7 +56,7 @@ pub async fn on_command(
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
-			content: Some(format!("Terms related to **{word}**: {}. More at <https://relatedwords.org/related/{word}>", terms.into_iter()
+			content: Some(format!("Terms related to **{word}**: {}. More at <https://relatedwords.org/relatedto/{word}>", terms.into_iter()
 			.map(|term| term.word)
 			.take(12).join(", "))),
 			..Default::default()
