@@ -27,6 +27,8 @@ pg_interval = "0.4.1"
 postgres-types = { version = "0.2.4", features = ["derive", "with-uuid-1", "array-impls", "with-chrono-0_4"] }
 rand = "0.8.5"
 regex = "1.6.0"
+reqwest = { version = "0.11.13", features = ["rustls-tls", "json", "gzip", "serde_json", "brotli", "deflate"] }
+serde = { version = "1.0.147", features = ["derive"] }
 tokio = { version = "1.21.2", features = ["full"] }
 tokio-postgres = { version = "0.7.7", features = ["array-impls", "with-chrono-0_4", "with-uuid-1"] }
 tracing = "0.1.37"
@@ -38,6 +40,7 @@ twilight-mention = "0.13.0"
 twilight-model = "0.13.5"
 twilight-standby = "0.13.2"
 twilight-util = { version = "0.13.3", features = ["permission-calculator", "builder", "link"] }
+url = "2.3.1"
 uuid = { version = "1.2.1", features = ["v4"] }
 
 [profile.release]
