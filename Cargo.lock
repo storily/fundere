@@ -472,9 +472,9 @@ checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
 name = "fend-core"
-version = "1.1.2"
+version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc3ed4a4942822f4d6fd7232e8d96405f51af43780b0e0b41ee39a7ecb21b4d1"
+checksum = "5056e3d62b5424ecab7a49b5adf6922cd6a6ea7d7ffba06679d7584b81dd97c9"
 
 [[package]]
 name = "flate2"
