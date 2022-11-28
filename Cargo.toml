@@ -28,7 +28,7 @@ postgres-types = { version = "0.2.4", features = ["derive", "with-uuid-1", "arra
 rand = "0.8.5"
 regex = "1.6.0"
 reqwest = { version = "0.11.13", default-features = false, features = ["rustls-tls", "json", "gzip", "serde_json", "brotli", "deflate", "trust-dns"] }
-serde = { version = "1.0.147", features = ["derive"] }
+serde = { version = "1.0.148", features = ["derive"] }
 tokio = { version = "1.21.2", features = ["full"] }
 tokio-postgres = { version = "0.7.7", features = ["array-impls", "with-chrono-0_4", "with-uuid-1"] }
 tracing = "0.1.37"
