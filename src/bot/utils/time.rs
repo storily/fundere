@@ -40,6 +40,21 @@ impl ChronoDurationExt for Duration {
 pub trait ChronoDateTimeExt {
 	/// Duration since the given time, or None if it's in the future.
 	fn elapsed(&self) -> Result<Option<std::time::Duration>>;
+
+	/// True if the date is a day away.
+	fn over_a_day_away(&self) -> bool;
+
+	/// Format as discord dynamic timestamp.
+	///
+	/// Format chars (note they're also locale-dependent, shown here US-format):
+	/// - `R` for relative
+	/// - `t` for short time (12:01 pm)
+	/// - `T` for long time (12:01:39 pm)
+	/// - `d` for short date (1/04/23)
+	/// - `D` for long date (1 April 2023)
+	/// - `f` for long datetime (1 April 2023 at 12:01 pm)
+	/// - `F` for long datetime with day of week (Saturday, 1 April 2023 at 12:01 pm)
+	fn discord_format(&self, format: char) -> String;
 }
 
 impl ChronoDateTimeExt for DateTime<Utc> {
@@ -50,6 +65,14 @@ impl ChronoDateTimeExt for DateTime<Utc> {
 		} else {
 			Ok(None)
 		}
+	}
+
+	fn over_a_day_away(&self) -> bool {
+		self.signed_duration_since(Utc::now()).num_days().abs() >= 1
+	}
+
+	fn discord_format(&self, format: char) -> String {
+		self.format(&format!("<t:%s:{format}>")).to_string()
 	}
 }
 

@@ -1,7 +1,8 @@
 use std::{
+	future::IntoFuture,
 	ops::Deref,
 	sync::Arc,
-	time::{Duration, Instant, SystemTime, UNIX_EPOCH}, future::IntoFuture,
+	time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use miette::{miette, Context, IntoDiagnostic, Result};
@@ -18,9 +19,8 @@ use twilight_http::{
 	Client,
 };
 use twilight_model::{
+	application::interaction::Interaction,
 	channel::message::component::Component,
-	application::{
-		interaction::Interaction},
 	channel::{message::embed::Embed, message::MessageFlags, Message},
 	http::{
 		attachment::Attachment,

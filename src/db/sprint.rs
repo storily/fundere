@@ -13,7 +13,10 @@ use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::id::{marker::UserMarker, Id};
 use uuid::Uuid;
 
-use crate::bot::{utils::time::ChronoDurationExt, App};
+use crate::bot::{
+	utils::time::{ChronoDateTimeExt, ChronoDurationExt},
+	App,
+};
 
 use super::{member::Member, message::Message};
 
@@ -337,24 +340,26 @@ impl Sprint {
 	}
 
 	pub async fn status_text(&self, app: App, announce: bool) -> Result<String> {
-		let starting_at = self
-			.starting_at
-			.with_timezone(&chrono_tz::Pacific::Auckland)
-			.format("%H:%M:%S");
+		let starting_at_ts =
+			self.starting_at
+				.discord_format(if self.starting_at.over_a_day_away() {
+					'f'
+				} else {
+					'T'
+				});
 
 		let shortid = self.shortid;
 		let duration = self.formatted_duration();
 
-		let starting_in = self.starting_in();
-		let starting_in_disp = if starting_in <= Duration::zero() {
+		let starting_in_ts = if self.starting_in() <= Duration::zero() {
 			"now".into()
 		} else {
-			format!("in {}", format_duration(starting_in.round_to_seconds()))
+			self.starting_at.discord_format('R')
 		};
 
 		Ok(if announce {
 			format!(
-				"⏱️  New sprint! `{shortid}` is starting {starting_in_disp} (at {starting_at}), going for {duration}."
+				"⏱️  New sprint! `{shortid}` is starting {starting_in_ts} (at {starting_at_ts}), going for {duration}."
 			)
 		} else {
 			let participants = try_join_all(
@@ -366,7 +371,7 @@ impl Sprint {
 			.await?
 			.join(", ");
 			format!(
-				"⏱️ Sprint `{shortid}` starts at {starting_at}, lasts for {duration}, with {participants}."
+				"⏱️ Sprint `{shortid}` starts at {starting_at_ts}, lasts for {duration}, with {participants}."
 			)
 		})
 	}
@@ -375,8 +380,11 @@ impl Sprint {
 	pub async fn summary_text(&self, app: App) -> Result<String> {
 		let started_at = self
 			.starting_at
-			.with_timezone(&chrono_tz::Pacific::Auckland)
-			.format("%H:%M:%S");
+			.discord_format(if self.starting_at.over_a_day_away() {
+				'f'
+			} else {
+				'T'
+			});
 
 		let shortid = self.shortid;
 		let duration = self.formatted_duration();
