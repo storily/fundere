@@ -23,8 +23,8 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		action::{
-			SprintAnnounce, SprintCancelled, SprintEnd, SprintJoined, SprintStart,
-			SprintStartWarning,
+			SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning, SprintJoined,
+			SprintStart, SprintStartWarning,
 		},
 		context::Timer,
 		utils::{
@@ -239,6 +239,11 @@ pub async fn load_from_db(app: App) -> Result<()> {
 					rescheduled += 1;
 					app.send_timer(Timer::new_after(ending_in, SprintEnd::new(&sprint))?)
 						.await?;
+					app.send_timer(Timer::new_after(
+						ending_in.saturating_sub(std::time::Duration::from_secs(30)),
+						SprintEndWarning::new(&sprint),
+					)?)
+					.await?;
 				} else {
 					warn!("sprint in init loaded from sprints_current that is started but is beyond end");
 					actioned_late += 1;
