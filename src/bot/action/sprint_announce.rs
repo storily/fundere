@@ -19,7 +19,7 @@ use crate::{
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::{Action, ActionClass, Args, SprintStart, SprintWarning};
+use super::{Action, ActionClass, Args, SprintStart, SprintStartWarning};
 
 #[derive(Debug, Clone)]
 pub struct SprintAnnounce {
@@ -62,7 +62,7 @@ impl SprintAnnounce {
 			app.send_timer(Timer::new_after(
 				// UNWRAP: warning_in uses saturating_sub, will never be negative
 				warning_in.to_std().unwrap(),
-				SprintWarning::new(&sprint),
+				SprintStartWarning::new(&sprint),
 			)?)
 			.await?;
 		}

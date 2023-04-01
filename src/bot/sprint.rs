@@ -23,7 +23,8 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		action::{
-			SprintAnnounce, SprintCancelled, SprintEnd, SprintJoined, SprintStart, SprintWarning,
+			SprintAnnounce, SprintCancelled, SprintEnd, SprintJoined, SprintStart,
+			SprintStartWarning,
 		},
 		context::Timer,
 		utils::{
@@ -213,7 +214,7 @@ pub async fn load_from_db(app: App) -> Result<()> {
 					let starting_in = sprint.starting_in();
 					if starting_in > Duration::seconds(2) {
 						actioned_late += 1;
-						app.do_action(SprintWarning::new(&sprint)).await?;
+						app.do_action(SprintStartWarning::new(&sprint)).await?;
 					} else if let Ok(starting_in) = starting_in.to_std() {
 						// implicitly checks that starting_in >= zero
 						rescheduled += 1;
@@ -225,8 +226,11 @@ pub async fn load_from_db(app: App) -> Result<()> {
 					}
 				} else {
 					rescheduled += 1;
-					app.send_timer(Timer::new_after(warning_in, SprintWarning::new(&sprint))?)
-						.await?;
+					app.send_timer(Timer::new_after(
+						warning_in,
+						SprintStartWarning::new(&sprint),
+					)?)
+					.await?;
 				}
 			}
 			SprintStatus::Started => {

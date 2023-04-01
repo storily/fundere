@@ -1,3 +1,4 @@
+use std::time::Duration;
 use itertools::Itertools;
 use miette::{miette, Result};
 use tracing::debug;
@@ -13,7 +14,7 @@ use crate::{
 	db::sprint::{Sprint, SprintStatus},
 };
 
-use super::{Action, ActionClass, Args, SprintEnd};
+use super::{Action, ActionClass, Args, SprintEnd, SprintEndWarning};
 
 #[derive(Debug, Clone)]
 pub struct SprintStart(Uuid);
@@ -53,6 +54,10 @@ impl SprintStart {
 		if let Ok(ending_in) = sprint.ending_in().to_std() {
 			debug!("set up sprint end timer");
 			app.send_timer(Timer::new_after(ending_in, SprintEnd::new(&sprint))?)
+				.await?;
+
+			debug!("set up sprint end warning timer");
+			app.send_timer(Timer::new_after(ending_in.saturating_sub(Duration::from_secs(30)), SprintEndWarning::new(&sprint))?)
 				.await?;
 		} else {
 			return Err(miette!("sprint ended before it began???"));

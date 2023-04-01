@@ -16,12 +16,12 @@ use crate::{
 use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
-pub struct SprintWarning(Uuid);
+pub struct SprintStartWarning(Uuid);
 
-impl SprintWarning {
-	#[tracing::instrument(name = "SprintWarning")]
+impl SprintStartWarning {
+	#[tracing::instrument(name = "SprintStartWarning")]
 	pub fn new(sprint: &Sprint) -> Action {
-		ActionClass::SprintWarning(Self(sprint.id)).into()
+		ActionClass::SprintStartWarning(Self(sprint.id)).into()
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {

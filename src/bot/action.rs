@@ -53,7 +53,8 @@ action!(
 	sprint_start: SprintStart,
 	sprint_summary: SprintSummary,
 	sprint_update: SprintUpdate,
-	sprint_warning: SprintWarning,
+	sprint_end_warning: SprintEndWarning,
+	sprint_start_warning: SprintStartWarning,
 	sprint_words_end: SprintWordsEnd,
 	sprint_words_start: SprintWordsStart
 );
