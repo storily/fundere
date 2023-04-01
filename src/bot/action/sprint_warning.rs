@@ -1,5 +1,4 @@
 use chrono::Duration;
-use humantime::format_duration;
 use itertools::Itertools;
 use miette::{miette, Result};
 use twilight_mention::Mention;
@@ -9,7 +8,7 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData},
-		utils::{action_row, time::ChronoDurationExt},
+		utils::{action_row, time::ChronoDateTimeExt},
 	},
 	db::sprint::{Sprint, SprintStatus},
 };
@@ -35,14 +34,10 @@ impl SprintWarning {
 
 		let Sprint { id, shortid, .. } = sprint;
 		let duration = sprint.formatted_duration();
-		let starting_in = sprint.starting_in();
-		let starting_in = if starting_in <= Duration::zero() {
+		let starting_in = if sprint.starting_in() <= Duration::zero() {
 			"now".into()
 		} else {
-			format!(
-				"in {}",
-				format_duration(starting_in.round_to_seconds())
-			)
+			sprint.starting_at.discord_format('R')
 		};
 
 		let participant_list = sprint

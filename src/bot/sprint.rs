@@ -1,3 +1,5 @@
+#![allow(deprecated)] // chrono's .date()
+
 use std::str::FromStr;
 
 use chrono::{Duration, Utc};

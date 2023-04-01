@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData, Timer},
-		utils::action_row,
+		utils::{time::ChronoDateTimeExt, action_row},
 	},
 	db::sprint::{Sprint, SprintStatus},
 };
@@ -40,12 +40,10 @@ impl SprintStart {
 			.map(|p| p.mention().to_string())
 			.join(", ");
 
-		let ending_at = sprint
-			.ending_at()
-			.with_timezone(&chrono_tz::Pacific::Auckland)
-			.format("%H:%M:%S");
+		let ending_abs = sprint.ending_at().discord_format('T');
+		let ending_rel = sprint.ending_at().discord_format('R');
 
-		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}! (ending at {ending_at}) // {participant_list}");
+		let content = format!("⏱️ Sprint `{shortid}` is starting now for {duration}! (ending at {ending_abs} / {ending_rel}) // {participant_list}");
 		// TODO: ding
 
 		sprint
