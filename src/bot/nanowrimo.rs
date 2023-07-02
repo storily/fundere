@@ -122,7 +122,7 @@ async fn status(app: App, interaction: &Interaction, _options: &[CommandDataOpti
 					debug!(?login.id, ?member, "checking nano credentials");
 					if let Ok(client) = login.client().await {
 						let nano_user = client.current_user().await.into_diagnostic()?.data;
-						format!("🙌 You're logged in as {}", nano_user.data.name)
+						format!("🙌 You're logged in as {}", nano_user.attributes.name)
 					} else {
 						format!("⁉️ I've got credentials for you but they're not working")
 					}
@@ -215,7 +215,7 @@ async fn login(
 		.await
 		.into_diagnostic()?
 		.data
-		.data
+		.attributes
 		.name;
 
 	app.send_response(GenericResponse::from_interaction(

@@ -234,11 +234,6 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 							.await
 							.wrap_err("modal: nanowrimo")
 					}
-					Some(&"words") => {
-						words::on_modal(app.clone(), interaction, &subids[1..], &data)
-							.await
-							.wrap_err("modal: words")
-					}
 					Some(other) => {
 						warn!("unhandled modal submit: {other:?}");
 						Ok(())

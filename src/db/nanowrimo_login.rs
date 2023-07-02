@@ -5,6 +5,7 @@ use miette::{Context, IntoDiagnostic, Result};
 use nanowrimo::NanoClient;
 use secret_vault_value::SecretValue;
 use tokio_postgres::Row;
+use tracing::debug;
 use uuid::Uuid;
 
 use crate::bot::App;
@@ -59,25 +60,31 @@ impl NanowrimoLogin {
 	}
 
 	#[tracing::instrument(skip(app))]
-	pub async fn get(app: App, uuid: Uuid) -> Result<Self> {
+	pub async fn get(app: App, uuid: Uuid) -> Result<Option<Self>> {
 		app.db
-			.query_one("SELECT * FROM nanowrimo_logins WHERE id = $1", &[&uuid])
+			.query("SELECT * FROM nanowrimo_logins WHERE id = $1", &[&uuid])
 			.await
 			.into_diagnostic()
-			.and_then(Self::from_row)
+			.and_then(|mut rows| {
+				if let Some(row) = rows.pop() {
+					Self::from_row(row).map(Some)
+				} else {
+					Ok(None)
+				}
+			})
 			.wrap_err("db: get nanowrimo login")
 	}
 
 	#[tracing::instrument(skip(app))]
-	pub async fn get_default(app: App) -> Option<Self> {
-		Self::get(app, Uuid::nil()).await.ok()
+	pub async fn get_default(app: App) -> Result<Option<Self>> {
+		Self::get(app, Uuid::nil()).await
 	}
 
 	#[tracing::instrument(skip(app))]
 	pub async fn get_for_member(app: App, member: Member) -> Result<Option<Self>> {
 		app.db
 			.query(
-				"SELECT * FROM nanowrimo_logins WHERE member = $1::member",
+				"SELECT * FROM nanowrimo_logins WHERE (member) = $1::member",
 				&[&member],
 			)
 			.await
@@ -128,5 +135,19 @@ impl NanowrimoLogin {
 		NanoClient::new_user(&self.username, &self.password.as_sensitive_str())
 			.await
 			.into_diagnostic()
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn client_for_member_or_default(app: App, member: Member) -> Result<NanoClient> {
+		if let Some(login) = Self::get_for_member(app.clone(), member).await? {
+			debug!(?login.id, "trying member nano login");
+			login.client().await
+		} else if let Some(login) = Self::get_default(app).await? {
+			debug!(?login.id, "trying default nano login");
+			login.client().await
+		} else {
+			debug!("falling back to guest nano login");
+			Ok(NanoClient::new_anon())
+		}
 	}
 }
