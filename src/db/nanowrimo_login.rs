@@ -74,15 +74,21 @@ impl NanowrimoLogin {
 	}
 
 	#[tracing::instrument(skip(app))]
-	pub async fn get_for_member(app: App, member: Member) -> Result<Self> {
+	pub async fn get_for_member(app: App, member: Member) -> Result<Option<Self>> {
 		app.db
-			.query_one(
-				"SELECT * FROM nanowrimo_logins WHERE member = $1",
+			.query(
+				"SELECT * FROM nanowrimo_logins WHERE member = $1::member",
 				&[&member],
 			)
 			.await
 			.into_diagnostic()
-			.and_then(Self::from_row)
+			.and_then(|mut rows| {
+				if let Some(row) = rows.pop() {
+					Self::from_row(row).map(Some)
+				} else {
+					Ok(None)
+				}
+			})
 			.wrap_err("db: get nanowrimo login for member")
 	}
 

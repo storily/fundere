@@ -60,9 +60,15 @@ pub async fn on_command(
 	});
 
 	match subcmd {
+		Some(("status", opts)) => status(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: login")?,
 		Some(("login", opts)) => login_confirm(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: login")?,
+		Some(("logout", opts)) => logout(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: logout")?,
 		Some((other, _)) => warn!("unhandled nanowrimo subcommand: {other}"),
 		_ => error!("unreachable bare nanowrimo command"),
 	}
@@ -104,6 +110,32 @@ pub async fn on_modal(
 	}
 
 	Ok(())
+}
+
+async fn status(app: App, interaction: &Interaction, _options: &[CommandDataOption]) -> Result<()> {
+	let member = Member::try_from(interaction)?;
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(
+				if let Some(login) = NanowrimoLogin::get_for_member(app.clone(), member).await? {
+					debug!(?login.id, ?member, "checking nano credentials");
+					if let Ok(client) = login.client().await {
+						let nano_user = client.current_user().await.into_diagnostic()?.data;
+						format!("🙌 You're logged in as {}", nano_user.data.name)
+					} else {
+						format!("⁉️ I've got credentials for you but they're not working")
+					}
+				} else {
+					format!("🙅 You're not logged in")
+				},
+			),
+			ephemeral: true,
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
 }
 
 async fn login_confirm(
@@ -156,14 +188,14 @@ async fn login(
 		})
 		.ok_or_else(|| miette!("password is a required field"))?;
 
-	let login = match NanowrimoLogin::get_for_member(app.clone(), member).await {
-		Ok(mut login) => {
+	let login = match NanowrimoLogin::get_for_member(app.clone(), member).await? {
+		Some(mut login) => {
 			debug!(?login.id, "updating login");
 			login.update(app.clone(), &username, password).await?;
 			info!(?login.id, ?member, "updated nanowrimo credentials");
 			login
 		}
-		Err(_) => {
+		None => {
 			debug!("creating login");
 			let login = NanowrimoLogin::create(app.clone(), member, &username, password).await?;
 			info!(?login.id, ?member, "recorded nanowrimo credentials");
@@ -190,6 +222,28 @@ async fn login(
 		interaction,
 		GenericResponseData {
 			content: Some(format!("✔ You're logged in to nanowrimo as {name}!\nYou can now show the wordcount of private projects and update your wordcount with this bot.")),
+			ephemeral: true,
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
+}
+
+async fn logout(app: App, interaction: &Interaction, _options: &[CommandDataOption]) -> Result<()> {
+	let member = Member::try_from(interaction)?;
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(
+				if let Some(login) = NanowrimoLogin::get_for_member(app.clone(), member).await? {
+					debug!(?login.id, ?member, "deleting nano credentials");
+					login.delete(app.clone()).await?;
+					format!("👋 I've forgotten your nanowrimo credentials!\nIf you want to check the wordcount of private projects or update your wordcount with this bot, you'll need to login again.")
+				} else {
+					format!("⁉️ You're not logged in to nanowrimo with the bot")
+				}
+			),
 			ephemeral: true,
 			..Default::default()
 		},
