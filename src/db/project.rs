@@ -61,12 +61,12 @@ impl Project {
 	}
 
 	#[tracing::instrument(skip(app))]
-	pub async fn get_for_member(app: App, member: Member) -> Result<Self> {
+	pub async fn get_all_for_member(app: App, member: Member) -> Result<Vec<Self>> {
 		app.db
-			.query_one("SELECT * FROM projects WHERE member = $1", &[&member])
+			.query("SELECT * FROM projects WHERE member = $1", &[&member])
 			.await
 			.into_diagnostic()
-			.and_then(Self::from_row)
+			.and_then(|rows| rows.into_iter().map(Self::from_row).collect())
 			.wrap_err("db: get project for member")
 	}
 

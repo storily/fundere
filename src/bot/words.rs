@@ -87,11 +87,6 @@ pub async fn on_modal(
 	debug!(?subids, ?component_data, "words modal action");
 
 	match subids {
-		// ["login"] => {
-		// 	login(app.clone(), interaction, *uuid, component_data)
-		// 		.await
-		// 		.wrap_err("action: words modal: login")?
-		// }
 		id => warn!(?id, "unhandled words modal action"),
 	}
 

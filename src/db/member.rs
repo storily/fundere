@@ -9,6 +9,7 @@ use twilight_model::{
 		Id,
 	},
 };
+use uuid::Uuid;
 
 use crate::bot::App;
 
@@ -55,6 +56,23 @@ impl From<Member> for Id<UserMarker> {
 impl From<Member> for Id<GuildMarker> {
 	fn from(chan: Member) -> Self {
 		Id::new(chan.guild_id as _)
+	}
+}
+
+// Uuid<->Member to represent a member as a single number/string/field
+impl From<Member> for Uuid {
+	fn from(Member { guild_id, user_id }: Member) -> Self {
+		// snowflakes are unsigned, only i64 here to store in postgres
+		Self::from_u64_pair(guild_id as _, user_id as _)
+	}
+}
+impl From<Uuid> for Member {
+	fn from(id: Uuid) -> Self {
+		let (guild, user) = id.as_u64_pair();
+		Self {
+			guild_id: guild as _,
+			user_id: user as _,
+		}
 	}
 }
 
