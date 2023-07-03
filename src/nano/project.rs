@@ -18,11 +18,11 @@ use crate::{
 
 use super::goal::Goal;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Project {
 	app: App,
 	data: ProjectData,
-	timezone: Tz,
+	pub timezone: Tz,
 	goals: Vec<Goal>,
 }
 

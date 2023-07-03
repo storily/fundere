@@ -9,7 +9,10 @@ use tokio_postgres::Row;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::{bot::App, nano::project::Project as NanoProject};
+use crate::{
+	bot::App,
+	nano::{goal::Goal as NanoGoal, project::Project as NanoProject},
+};
 
 use super::member::Member;
 use super::nanowrimo_login::NanowrimoLogin;
@@ -137,15 +140,20 @@ impl Project {
 	}
 
 	pub async fn show_text(&self, app: App) -> Result<String> {
-		let proj = self.fetch(app).await?;
-		let goal = self.goal.unwrap_or_else(|| {
-			proj
-				.current_goal()
-				.map_or(0, |goal| goal.data.goal)
-		});
+		let proj = self.fetch(app.clone()).await?;
+		let mut goal = proj
+			.current_goal()
+			.cloned()
+			.unwrap_or_else(|| NanoGoal::default_to_this_month(app.clone(), proj.timezone));
+		if let Some(over) = self.goal {
+			goal.set(over);
+		}
 
-		let title = proj.title();
-		let count = proj.wordcount();
-		Ok(format!("“{title}”: **{count}** words ({goal} goal)"))
+		Ok(format!(
+			"“{title}”: **{count}** words ({goal} goal)",
+			title = proj.title(),
+			count = proj.wordcount(),
+			goal = goal.data.goal
+		))
 	}
 }

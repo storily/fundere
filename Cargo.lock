@@ -1180,7 +1180,7 @@ dependencies = [
 [[package]]
 name = "nanowrimo"
 version = "0.3.0"
-source = "git+https://github.com/passcod/nanowrimo-rs#b95b8199e7175ee0887923993b245be8afed8e4c"
+source = "git+https://github.com/passcod/nanowrimo-rs#f28c8a5fa56a97b5e346601bf2fc52eb25b18336"
 dependencies = [
  "chrono",
  "paste",

@@ -84,15 +84,13 @@ pub async fn on_command(
 	Ok(())
 }
 
-async fn show(
-	app: App,
-	interaction: &Interaction,
-	options: &[CommandDataOption],
-) -> Result<()> {
+async fn show(app: App, interaction: &Interaction, options: &[CommandDataOption]) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-        let project = Project::get_for_member(app.clone(), member).await?.ok_or_else(|| miette!("no project set up! Use /words project"))?;
-        let text = project.show_text(app.clone()).await?;
-        debug!(?project, ?text, "about to show this");
+	let project = Project::get_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
+	let text = project.show_text(app.clone()).await?;
+	debug!(?project, ?text, "about to show this");
 
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
