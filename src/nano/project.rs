@@ -68,13 +68,11 @@ impl Project {
 
 	/// Wordcount for current goal
 	pub fn wordcount(&self) -> u64 {
-            if let Some(goal) = self.current_goal() {
-                goal.data.current_count
-            } else {
-		self.data
-			.unit_count
-			.unwrap_or(0)
-            }
+		if let Some(goal) = self.current_goal() {
+			goal.data.current_count
+		} else {
+			self.data.unit_count.unwrap_or(0)
+		}
 	}
 
 	fn current_goals(&self) -> Vec<&Goal> {

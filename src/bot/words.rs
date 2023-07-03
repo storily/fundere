@@ -15,7 +15,7 @@ use twilight_util::builder::command::{
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData},
-		utils::command::get_string,
+		utils::command::{get_integer, get_string},
 	},
 	db::{member::Member, nanowrimo_login::NanowrimoLogin, project::Project},
 };
@@ -36,11 +36,14 @@ pub fn command() -> Result<Command> {
 			),
 		)
 		.option(
-			SubCommandBuilder::new("goal", "Override your project's goal (useful in November)")
-				.option(
-					IntegerBuilder::new("words", "New goal in words, only applies to sassbot")
-						.required(true),
-				),
+			SubCommandBuilder::new(
+				"goal",
+				"Override your project's goal (useful in November). 0 unsets the custom goal.",
+			)
+			.option(
+				IntegerBuilder::new("words", "New goal in words, only applies to sassbot")
+					.required(true),
+			),
 		)
 		.option(
 			SubCommandBuilder::new("record", "Set your word count")
@@ -71,9 +74,9 @@ pub async fn on_command(
 		Some(("project", opts)) => set_project(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: project")?,
-		// Some(("goal", opts)) => goal(app.clone(), interaction, opts)
-		// 	.await
-		// 	.wrap_err("command: goal")?,
+		Some(("goal", opts)) => override_goal(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: goal")?,
 		// Some(("record", opts)) => record(app.clone(), interaction, opts)
 		// 	.await
 		// 	.wrap_err("command: record")?,
@@ -138,6 +141,41 @@ async fn set_project(
 				"Got it! To show off your wordcount for {}, call **/words show**",
 				nano_project.data.attributes.title
 			)),
+			ephemeral: true,
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
+}
+
+async fn override_goal(
+	app: App,
+	interaction: &Interaction,
+	options: &[CommandDataOption],
+) -> Result<()> {
+	let goal = get_integer(options, "words").ok_or_else(|| miette!("missing goal in words"))?;
+
+	let member = Member::try_from(interaction)?;
+	let project = Project::get_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
+
+	debug!(?project.id, ?goal, "updating project");
+	let content = if goal > 0 {
+		project.set_goal(app.clone(), goal as _).await?;
+		debug!(?project.id, ?goal, "set custom goal");
+		format!("Got it! Your new sassbot-only goal is **{goal}**.",)
+	} else {
+		project.unset_goal(app.clone()).await?;
+		debug!(?project.id, "unset custom goal");
+		format!("Your goal has been reverted to the one from the nano website (if any).",)
+	};
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(content),
 			ephemeral: true,
 			..Default::default()
 		},
