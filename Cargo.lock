@@ -1180,7 +1180,7 @@ dependencies = [
 [[package]]
 name = "nanowrimo"
 version = "0.3.0"
-source = "git+https://github.com/passcod/nanowrimo-rs#f81414f3005b1aacaeb6c9f3b4d6c90f64f2bd6b"
+source = "git+https://github.com/passcod/nanowrimo-rs#2403752f35036ae34d6b01aaa757baac610d5e21"
 dependencies = [
  "chrono",
  "paste",
@@ -1188,6 +1188,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

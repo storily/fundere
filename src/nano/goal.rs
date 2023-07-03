@@ -7,6 +7,7 @@ use tracing::debug;
 
 #[derive(Clone, Debug)]
 pub struct Goal {
+	pub id: u64,
 	pub data: Data,
 	timezone: Tz,
 }
@@ -25,8 +26,8 @@ pub struct GoalTarget {
 }
 
 impl Goal {
-	pub fn new(timezone: Tz, data: Data) -> Self {
-		Self { data, timezone }
+	pub fn new(id: u64, timezone: Tz, data: Data) -> Self {
+		Self { id, data, timezone }
 	}
 
 	pub fn set(&mut self, new: u64) {

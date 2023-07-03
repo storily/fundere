@@ -2,7 +2,9 @@ use std::fmt::Debug;
 
 use chrono_tz::Tz;
 use miette::{miette, Context, IntoDiagnostic, Result};
-use nanowrimo::{NanoKind, Object, ProjectChallengeObject, ProjectData, ProjectObject, UserObject};
+use nanowrimo::{
+	NanoClient, NanoKind, Object, ProjectChallengeObject, ProjectData, ProjectObject, UserObject,
+};
 use tracing::debug;
 
 use crate::{
@@ -14,6 +16,7 @@ use super::goal::Goal;
 
 #[derive(Clone, Debug)]
 pub struct Project {
+	pub id: u64,
 	data: ProjectData,
 	pub timezone: Tz,
 	goals: Vec<Goal>,
@@ -22,7 +25,10 @@ pub struct Project {
 impl Project {
 	pub async fn fetch(app: App, member: Member, id: u64) -> Result<Self> {
 		let client = NanowrimoLogin::client_for_member_or_default(app.clone(), member).await?;
+		Self::fetch_with_client(client, id).await
+	}
 
+	pub async fn fetch_with_client(client: NanoClient, id: u64) -> Result<Self> {
 		let project = client
 			.get_id_include::<ProjectObject>(NanoKind::Project, id, &[NanoKind::ProjectChallenge])
 			.await
@@ -47,8 +53,8 @@ impl Project {
 			.unwrap_or_default()
 			.into_iter()
 			.filter_map(|obj| match obj {
-				Object::ProjectChallenge(ProjectChallengeObject { attributes, .. }) => {
-					Some(Goal::new(timezone.clone(), attributes))
+				Object::ProjectChallenge(ProjectChallengeObject { id, attributes, .. }) => {
+					Some(Goal::new(id, timezone.clone(), attributes))
 				}
 				_ => None,
 			})
@@ -56,6 +62,7 @@ impl Project {
 		goals.sort_by_key(|goal| goal.data.starts_at);
 
 		Ok(Self {
+			id,
 			data: project.data.attributes,
 			timezone,
 			goals,

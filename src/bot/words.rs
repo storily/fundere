@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use miette::{miette, Context, IntoDiagnostic, Result};
 use nanowrimo::{ItemResponse, NanoKind, ObjectInfo, ProjectObject};
 use tracing::{debug, error, warn};
@@ -18,6 +20,7 @@ use crate::{
 		utils::command::{get_integer, get_string},
 	},
 	db::{member::Member, nanowrimo_login::NanowrimoLogin, project::Project},
+	nano::project::Project as NanoProject,
 };
 
 use super::App;
@@ -77,9 +80,9 @@ pub async fn on_command(
 		Some(("goal", opts)) => override_goal(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: goal")?,
-		// Some(("record", opts)) => record(app.clone(), interaction, opts)
-		// 	.await
-		// 	.wrap_err("command: record")?,
+		Some(("record", opts)) => record_words(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: record")?,
 		Some((other, _)) => warn!("unhandled words subcommand: {other}"),
 		_ => error!("unreachable bare words command"),
 	}
@@ -176,6 +179,73 @@ async fn override_goal(
 		interaction,
 		GenericResponseData {
 			content: Some(content),
+			ephemeral: true,
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Record {
+	Absolute,
+	Relative,
+}
+
+async fn record_words(
+	app: App,
+	interaction: &Interaction,
+	options: &[CommandDataOption],
+) -> Result<()> {
+	let (words, method) = get_integer(options, "words")
+		.map(|n| (n, Record::Absolute))
+		.or_else(|| {
+			get_string(options, "words").and_then(|ws| {
+				if let Some(num) = ws.strip_prefix("+") {
+					i64::from_str(num).ok().map(|n| (n, Record::Relative))
+				} else if let Some(num) = ws.strip_prefix("-") {
+					i64::from_str(num).ok().map(|n| (-n, Record::Relative))
+				} else {
+					None
+				}
+			})
+		})
+		.ok_or_else(|| miette!("missing words"))?;
+
+	let member = Member::try_from(interaction)?;
+	let project = Project::get_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
+	let client = NanowrimoLogin::get_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("You need to /nanowrimo login to be able to record words!"))?
+		.client()
+		.await?;
+
+	let nano_project = NanoProject::fetch_with_client(client.clone(), project.nano_id).await?;
+	let Some(goal) = nano_project.current_goal() else {
+		return Err(miette!("no goal set up on the nano site"));
+	};
+
+	let session_word_count = if let Record::Absolute = method {
+		words - (nano_project.wordcount() as i64)
+	} else {
+		words
+	};
+
+	debug!(?member, ?project.id, ?nano_project, ?session_word_count, "posting new wordcount session to nano");
+	let saved_session = client
+		.add_project_session(nano_project.id, goal.id, session_word_count)
+		.await
+		.into_diagnostic()
+		.wrap_err("nano: failed to update wordcount")?;
+	debug!(?member, ?project.id, ?nano_project, ?session_word_count, ?saved_session, "created wordcount session on nano");
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(format!("Updated your word count on nanowrimo.org")),
 			ephemeral: true,
 			..Default::default()
 		},
