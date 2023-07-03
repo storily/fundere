@@ -22,10 +22,12 @@ pub mod calc;
 pub mod choose;
 pub mod context;
 pub mod debug;
+pub mod nanowrimo;
 pub mod random;
 pub mod related;
 pub mod sprint;
 pub mod utils;
+pub mod words;
 
 pub async fn start(config: Config) -> Result<()> {
 	let (db, db_task) = config.db.connect().await?;
@@ -47,9 +49,11 @@ pub async fn start(config: Config) -> Result<()> {
 				calc::command()?,
 				choose::command()?,
 				debug::command()?,
+				nanowrimo::command()?,
 				random::command()?,
 				related::command()?,
 				sprint::command()?,
+				words::command()?,
 			])
 			.await
 			.into_diagnostic()?;
@@ -154,24 +158,30 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 			handle_interaction_error(app.clone(), interaction, async {
 				info!(command=?data.name, "handle slash command");
 				match data.name.as_str() {
-					"sprint" => sprint::on_command(app.clone(), interaction, &data)
-						.await
-						.wrap_err("command: sprint"),
-					"debug" => debug::on_command(app.clone(), interaction, &data)
-						.await
-						.wrap_err("command: debug"),
 					"calc" => calc::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: calc"),
 					"choose" => choose::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: choose"),
+					"debug" => debug::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: debug"),
+					"nanowrimo" => nanowrimo::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: nanowrimo"),
 					"random" => random::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: random"),
 					"related" => related::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: related"),
+					"sprint" => sprint::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: sprint"),
+					"words" => words::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: words"),
 					cmd => {
 						warn!("unhandled command: {cmd}");
 						Ok(())
@@ -195,6 +205,11 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 							.await
 							.wrap_err("component: debug")
 					}
+					Some(&"nanowrimo") => {
+						nanowrimo::on_component(app.clone(), interaction, &subids[1..], &data)
+							.await
+							.wrap_err("component: nanowrimo")
+					}
 					Some(other) => {
 						warn!("unhandled component action: {other:?}");
 						Ok(())
@@ -213,6 +228,11 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 						sprint::on_modal(app.clone(), interaction, &subids[1..], &data)
 							.await
 							.wrap_err("modal: sprint")
+					}
+					Some(&"nanowrimo") => {
+						nanowrimo::on_modal(app.clone(), interaction, &subids[1..], &data)
+							.await
+							.wrap_err("modal: nanowrimo")
 					}
 					Some(other) => {
 						warn!("unhandled modal submit: {other:?}");

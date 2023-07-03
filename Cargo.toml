@@ -14,7 +14,7 @@ rust-version = "1.60.0"
 exclude = ["/.github"]
 
 [dependencies]
-chrono = "0.4.22"
+chrono = { version = "0.4.22", features = ["clock"] }
 chrono-tz = "0.8.0"
 clap = { version = "4.0.27", features = ["derive", "cargo"] }
 fend-core = "1.1.1"
@@ -28,6 +28,7 @@ postgres-types = { version = "0.2.4", features = ["derive", "with-uuid-1", "arra
 rand = "0.8.5"
 regex = "1.6.0"
 reqwest = { version = "0.11.13", default-features = false, features = ["rustls-tls", "json", "gzip", "serde_json", "brotli", "deflate", "trust-dns"] }
+secret-vault-value = "0.3.7"
 serde = { version = "1.0.147", features = ["derive"] }
 tokio = { version = "1.21.2", features = ["full"] }
 tokio-postgres = { version = "0.7.7", features = ["array-impls", "with-chrono-0_4", "with-uuid-1"] }
@@ -40,8 +41,18 @@ twilight-mention = "0.14.0"
 twilight-model = "0.14.0"
 twilight-standby = "0.14.0"
 twilight-util = { version = "0.14.0", features = ["permission-calculator", "builder", "link"] }
-url = "2.3.1"
+url = "2.4.0"
 uuid = { version = "1.2.1", features = ["v4"] }
+
+[dependencies.nanowrimo]
+version = "0.3.0"
+git = "https://github.com/passcod/nanowrimo-rs"
+#path = "../nanowrimo-rs"
+
+[profile.dev.package."*"]
+opt-level = 3
+[profile.dev.package.nanowrimo]
+opt-level = 1
 
 [profile.release]
 lto = true

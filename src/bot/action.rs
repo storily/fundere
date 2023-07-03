@@ -45,6 +45,8 @@ action!(
 	calc_result: CalcResult,
 	command_ack: CommandAck,
 	command_error: CommandError,
+	nanowrimo_login_confirm: NanowrimoLoginConfirm,
+	nanowrimo_login_modal: NanowrimoLoginModal,
 	sprint_announce: SprintAnnounce,
 	sprint_cancelled: SprintCancelled,
 	sprint_end: SprintEnd,

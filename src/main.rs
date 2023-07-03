@@ -7,6 +7,7 @@ use tokio::runtime::Builder;
 pub(crate) mod bot;
 pub(crate) mod config;
 pub(crate) mod db;
+pub(crate) mod nano;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()
