@@ -1,5 +1,5 @@
 use miette::{miette, Context, IntoDiagnostic, Result};
-use nanowrimo::{NanoKind, ObjectInfo, ProjectObject, ItemResponse};
+use nanowrimo::{ItemResponse, NanoKind, ObjectInfo, ProjectObject};
 use tracing::{debug, error, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
@@ -65,9 +65,9 @@ pub async fn on_command(
 	});
 
 	match subcmd {
-		// Some(("show", opts)) => show(app.clone(), interaction, opts)
-		// 	.await
-		// 	.wrap_err("command: show")?,
+		Some(("show", opts)) => show(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: show")?,
 		Some(("project", opts)) => set_project(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: project")?,
@@ -82,6 +82,27 @@ pub async fn on_command(
 	}
 
 	Ok(())
+}
+
+async fn show(
+	app: App,
+	interaction: &Interaction,
+	options: &[CommandDataOption],
+) -> Result<()> {
+	let member = Member::try_from(interaction)?;
+        let project = Project::get_for_member(app.clone(), member).await?.ok_or_else(|| miette!("no project set up! Use /words project"))?;
+        let text = project.show_text(app.clone()).await?;
+        debug!(?project, ?text, "about to show this");
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(text),
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
 }
 
 async fn set_project(
@@ -115,7 +136,10 @@ async fn set_project(
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
-			content: Some(format!("Got it! To show off your wordcount for {}, call **/words show**", nano_project.data.attributes.title)),
+			content: Some(format!(
+				"Got it! To show off your wordcount for {}, call **/words show**",
+				nano_project.data.attributes.title
+			)),
 			ephemeral: true,
 			..Default::default()
 		},

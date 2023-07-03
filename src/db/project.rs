@@ -2,13 +2,17 @@ use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
 use miette::{Context, IntoDiagnostic, Result};
+use nanowrimo::{
+	NanoKind, Object, ProjectChallengeData, ProjectChallengeObject, ProjectData, ProjectObject,
+};
 use tokio_postgres::Row;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::bot::App;
+use crate::{bot::App, nano::project::Project as NanoProject};
 
 use super::member::Member;
+use super::nanowrimo_login::NanowrimoLogin;
 
 #[derive(Debug, Clone)]
 pub struct Project {
@@ -16,8 +20,8 @@ pub struct Project {
 	pub created_at: DateTime<Utc>,
 	pub updated_at: DateTime<Utc>,
 	pub member: Member,
-	pub nano_id: i64,
-	pub goal: Option<i32>,
+	pub nano_id: u64,
+	pub goal: Option<u64>,
 }
 
 impl Project {
@@ -27,8 +31,11 @@ impl Project {
 			created_at: row.try_get("created_at").into_diagnostic()?,
 			updated_at: row.try_get("updated_at").into_diagnostic()?,
 			member: row.try_get("member").into_diagnostic()?,
-			nano_id: row.try_get("nano_id").into_diagnostic()?,
-			goal: row.try_get("goal").into_diagnostic()?,
+			nano_id: row.try_get::<_, i64>("nano_id").into_diagnostic()? as _,
+			goal: row
+				.try_get::<_, Option<i32>>("goal")
+				.into_diagnostic()?
+				.map(|n| n as _),
 		})
 	}
 
@@ -83,7 +90,10 @@ impl Project {
 	#[tracing::instrument(skip(app))]
 	pub async fn get_for_member(app: App, member: Member) -> Result<Option<Self>> {
 		app.db
-			.query("SELECT * FROM projects WHERE (member) = $1::member", &[&member])
+			.query(
+				"SELECT * FROM projects WHERE (member) = $1::member",
+				&[&member],
+			)
 			.await
 			.into_diagnostic()
 			.and_then(|mut rows| {
@@ -122,23 +132,20 @@ impl Project {
 			.map(drop)
 	}
 
-	pub async fn fetch_count(&self, _app: App) -> Result<u64> {
-		todo!()
+	pub async fn fetch(&self, app: App) -> Result<NanoProject> {
+		NanoProject::fetch(app.clone(), self.member, self.nano_id).await
 	}
 
-	pub async fn fetch_goal(&self, _app: App) -> Result<u64> {
-		todo!()
-	}
+	pub async fn show_text(&self, app: App) -> Result<String> {
+		let proj = self.fetch(app).await?;
+		let goal = self.goal.unwrap_or_else(|| {
+			proj
+				.current_goal()
+				.map_or(0, |goal| goal.data.goal)
+		});
 
-	pub async fn goal(&self, app: App) -> Result<u64> {
-		if let Some(goal) = self.goal {
-			Ok(u64::try_from(goal).into_diagnostic()?)
-		} else {
-			self.fetch_goal(app).await
-		}
-	}
-
-	pub async fn show_text(&self, _app: App) -> Result<String> {
-		todo!()
+		let title = proj.title();
+		let count = proj.wordcount();
+		Ok(format!("“{title}”: **{count}** words ({goal} goal)"))
 	}
 }
