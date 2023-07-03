@@ -1,24 +1,12 @@
 use std::fmt::Debug;
 
-use chrono::{DateTime, Datelike, Days, TimeZone, Timelike, Utc};
+use chrono::{Duration, Timelike, Utc};
 use chrono_tz::Tz;
-use miette::{Context, IntoDiagnostic, Result};
-use nanowrimo::{
-	EventType, NanoKind, Object, ProjectChallengeData as Data, ProjectChallengeObject, ProjectData,
-	ProjectObject, UnitType,
-};
-use tokio_postgres::Row;
+use nanowrimo::{EventType, ProjectChallengeData as Data};
 use tracing::debug;
-use uuid::Uuid;
-
-use crate::{
-	bot::App,
-	db::{member::Member, nanowrimo_login::NanowrimoLogin},
-};
 
 #[derive(Clone, Debug)]
 pub struct Goal {
-	app: App,
 	pub data: Data,
 	timezone: Tz,
 }
@@ -37,16 +25,16 @@ pub struct GoalTarget {
 }
 
 impl Goal {
-	pub fn new(app: App, timezone: Tz, data: Data) -> Self {
-		Self {
-			app,
-			data,
-			timezone,
-		}
+	pub fn new(timezone: Tz, data: Data) -> Self {
+		Self { data, timezone }
 	}
 
 	pub fn set(&mut self, new: u64) {
 		self.data.goal = new;
+	}
+
+	pub fn is_november(&self) -> bool {
+		self.data.event_type == EventType::NanoWrimo
 	}
 
 	pub fn is_current(&self) -> bool {
@@ -54,55 +42,96 @@ impl Goal {
 		today >= self.data.starts_at && today <= self.data.ends_at
 	}
 
-	pub fn progress(&self, force_goal: Option<u64>) -> GoalProgress {
-		todo!()
+	pub fn length(&self) -> Duration {
+		self.data.ends_at.signed_duration_since(self.data.starts_at)
 	}
 
-	pub fn default_to_this_month(app: App, timezone: Tz) -> Self {
-		let today = Utc::now().with_timezone(&timezone);
-		let month = today.month();
-		let start_of_this_month = zero_time(today.with_day(1))
-			.expect("should always be able to find the start of the month");
-		let start_of_next_month = zero_time(
-			today
-				.with_day(1)
-				.and_then(|dt| dt.with_month0(if month == 12 { 1 } else { month + 1 })),
+	#[allow(dead_code)] // hard to get right, leaving just in case
+	pub fn time_left(&self) -> Option<Duration> {
+		if self.is_current() {
+			let today = Utc::now().with_timezone(&self.timezone).date_naive();
+			Some(self.data.ends_at.signed_duration_since(today))
+		} else {
+			None
+		}
+	}
+
+	pub fn time_gone(&self) -> Option<Duration> {
+		if self.is_current() {
+			let today = Utc::now().with_timezone(&self.timezone).date_naive();
+			Some(today.signed_duration_since(self.data.starts_at))
+		} else {
+			None
+		}
+	}
+
+	pub fn progress(&self) -> Option<GoalProgress> {
+		let count = float(self.data.current_count);
+		let goal = float(self.data.goal);
+		let now = Utc::now().with_timezone(&self.timezone);
+
+		let today = now.date_naive();
+		if self.data.starts_at > today {
+			return None;
+		}
+
+		let length = self.length();
+		let gone = self.time_gone();
+
+		let whole_days = length.num_days();
+		let full_days = whole_days + 1;
+		let per_day = goal / float(full_days);
+
+		let days_gone = gone.map(|d| d.num_days()).unwrap_or(0);
+		let target_day = (days_gone + 1).min(length.num_days());
+		let target_today = float(target_day) * per_day;
+
+		let secs_from_midnight = now.num_seconds_from_midnight();
+		let secs_total: u32 = 60 * 24 * 24;
+		let target_live = (target_today
+			- (per_day * float(secs_total.saturating_sub(secs_from_midnight)) / float(secs_total)))
+		.min(target_today);
+
+		let diff_today = count - target_today;
+		let diff_live = count - target_live;
+
+		debug!(
+			?length,
+			?whole_days,
+			?full_days,
+			?per_day,
+			?secs_from_midnight,
+			?gone,
+			?days_gone,
+			?target_day,
+			?today,
+			?now,
+			?goal,
+			?count,
+			?target_today,
+			?diff_today,
+			?target_live,
+			?diff_live,
+			"progress debug"
 		);
-		let end_of_this_month = start_of_next_month
-			.and_then(|dt| dt.checked_sub_days(Days::new(1)))
-			.expect("should always be able to find the end of the month");
-		Self::new(
-			app,
-			timezone,
-			Data {
-				challenge_id: 0,
-				current_count: 0,
-				ends_at: end_of_this_month.date_naive(),
-				event_type: EventType::NanoWrimo,
-				feeling: None,
-				goal: 50_000,
-				how: None,
-				last_recompute: None,
-				name: "Default goal".into(),
-				project_id: 0,
-				speed: None,
-				start_count: Some(0),
-				starts_at: start_of_this_month.date_naive(),
-				streak: None,
-				unit_type: UnitType::Words,
-				user_id: 0,
-				when: None,
-				won_at: None,
-				writing_location: None,
-				writing_type: None,
+
+		Some(GoalProgress {
+			percent: 100.0 * count / goal,
+			today: GoalTarget {
+				target: target_today.round() as _,
+				diff: diff_today.round() as _,
 			},
-		)
+			live: GoalTarget {
+				target: target_live.round() as _,
+				diff: diff_live.round() as _,
+			},
+		})
 	}
 }
 
-fn zero_time<Tz: TimeZone>(dt: Option<DateTime<Tz>>) -> Option<DateTime<Tz>> {
-	dt.and_then(|dt| dt.with_hour(0))
-		.and_then(|dt| dt.with_minute(0))
-		.and_then(|dt| dt.with_second(0))
-		.and_then(|dt| dt.with_nanosecond(0))
+fn float<T>(n: T) -> f64
+where
+	u32: TryFrom<T>,
+{
+	f64::from(u32::try_from(n).unwrap_or(u32::MAX))
 }

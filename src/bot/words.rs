@@ -65,7 +65,7 @@ pub async fn on_command(
 	});
 
 	match subcmd {
-		Some(("show", opts)) => show(app.clone(), interaction, opts)
+		Some(("show", _opts)) => show(app.clone(), interaction)
 			.await
 			.wrap_err("command: show")?,
 		Some(("project", opts)) => set_project(app.clone(), interaction, opts)
@@ -84,7 +84,7 @@ pub async fn on_command(
 	Ok(())
 }
 
-async fn show(app: App, interaction: &Interaction, options: &[CommandDataOption]) -> Result<()> {
+async fn show(app: App, interaction: &Interaction) -> Result<()> {
 	let member = Member::try_from(interaction)?;
 	let project = Project::get_for_member(app.clone(), member)
 		.await?

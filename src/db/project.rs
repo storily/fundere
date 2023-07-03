@@ -1,21 +1,14 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Write};
 
 use chrono::{DateTime, Utc};
 use miette::{Context, IntoDiagnostic, Result};
-use nanowrimo::{
-	NanoKind, Object, ProjectChallengeData, ProjectChallengeObject, ProjectData, ProjectObject,
-};
 use tokio_postgres::Row;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::{
-	bot::App,
-	nano::{goal::Goal as NanoGoal, project::Project as NanoProject},
-};
+use crate::{bot::App, nano::project::Project as NanoProject};
 
 use super::member::Member;
-use super::nanowrimo_login::NanowrimoLogin;
 
 #[derive(Debug, Clone)]
 pub struct Project {
@@ -141,19 +134,65 @@ impl Project {
 
 	pub async fn show_text(&self, app: App) -> Result<String> {
 		let proj = self.fetch(app.clone()).await?;
-		let mut goal = proj
-			.current_goal()
-			.cloned()
-			.unwrap_or_else(|| NanoGoal::default_to_this_month(app.clone(), proj.timezone));
-		if let Some(over) = self.goal {
-			goal.set(over);
+		let title = proj.title();
+		let count = proj.wordcount();
+
+		let mut deets = String::new();
+
+		if let Some(mut goal) = proj.current_goal().cloned() {
+			if let Some(over) = self.goal {
+				goal.set(over);
+			}
+
+			if let Some(prog) = goal.progress() {
+				write!(deets, "{:.2}% done", prog.percent).into_diagnostic()?;
+				if prog.percent < 100.0 {
+					if prog.today.diff == 0 && prog.live.diff == 0 {
+						write!(deets, ", on track").into_diagnostic()?;
+					} else {
+						write!(
+							deets,
+							", {today} today / {live} live",
+							today = tracking(prog.today.diff),
+							live = tracking(prog.live.diff)
+						)
+						.into_diagnostic()?;
+					}
+				}
+
+				if !(goal.is_november() && goal.data.goal == 50_000) {
+					write!(deets, ", {} goal", numberk(goal.data.goal as _)).into_diagnostic()?;
+				}
+			}
+		} else {
+			write!(deets, "no goal").into_diagnostic()?;
 		}
 
-		Ok(format!(
-			"“{title}”: **{count}** words ({goal} goal)",
-			title = proj.title(),
-			count = proj.wordcount(),
-			goal = goal.data.goal
-		))
+		Ok(format!("“{title}”: **{count}** words ({deets})"))
 	}
+}
+
+fn numberk(n: i64) -> String {
+	if n < 1000 {
+		n.to_string()
+	} else if n < 10_000 {
+		format!("{:.1}k", (n as f64) / 1_000.0)
+	} else if n < 1_000_000 {
+		format!("{:.0}k", (n as f64) / 1_000.0)
+	} else if n < 10_000_000 {
+		format!("{:.1}M", (n as f64) / 1_000_000.0)
+	} else {
+		format!("{:.0}M", (n as f64) / 1_000_000.0)
+	}
+}
+
+fn tracking(mut diff: i64) -> String {
+	let state = if diff < 0 {
+		diff = diff.abs();
+		"behind"
+	} else {
+		"ahead"
+	};
+
+	format!("{} {state}", numberk(diff))
 }

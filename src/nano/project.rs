@@ -1,15 +1,9 @@
 use std::fmt::Debug;
 
-use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use miette::{miette, Context, IntoDiagnostic, Result};
-use nanowrimo::{
-	NanoKind, Object, ProjectChallengeData, ProjectChallengeObject, ProjectData, ProjectObject,
-	UserObject,
-};
-use tokio_postgres::Row;
+use nanowrimo::{NanoKind, Object, ProjectChallengeObject, ProjectData, ProjectObject, UserObject};
 use tracing::debug;
-use uuid::Uuid;
 
 use crate::{
 	bot::App,
@@ -20,7 +14,6 @@ use super::goal::Goal;
 
 #[derive(Clone, Debug)]
 pub struct Project {
-	app: App,
 	data: ProjectData,
 	pub timezone: Tz,
 	goals: Vec<Goal>,
@@ -55,7 +48,7 @@ impl Project {
 			.into_iter()
 			.filter_map(|obj| match obj {
 				Object::ProjectChallenge(ProjectChallengeObject { attributes, .. }) => {
-					Some(Goal::new(app.clone(), timezone.clone(), attributes))
+					Some(Goal::new(timezone.clone(), attributes))
 				}
 				_ => None,
 			})
@@ -63,7 +56,6 @@ impl Project {
 		goals.sort_by_key(|goal| goal.data.starts_at);
 
 		Ok(Self {
-			app,
 			data: project.data.attributes,
 			timezone,
 			goals,
