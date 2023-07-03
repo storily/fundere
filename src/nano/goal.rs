@@ -87,10 +87,10 @@ impl Goal {
 		let target_today = float(target_day) * per_day;
 
 		let secs_from_midnight = now.num_seconds_from_midnight();
-		let secs_total: u32 = 60 * 24 * 24;
-		let target_live = (target_today
-			- (per_day * float(secs_total.saturating_sub(secs_from_midnight)) / float(secs_total)))
-		.min(target_today);
+		let secs_total: u32 = 60 * 60 * 24;
+		let secs_to_midnight = secs_total.saturating_sub(secs_from_midnight);
+		let day_portion = float(secs_to_midnight) / float(secs_total);
+		let target_live = (target_today - (per_day * day_portion)).min(target_today);
 
 		let diff_today = count - target_today;
 		let diff_live = count - target_live;
@@ -101,6 +101,8 @@ impl Goal {
 			?full_days,
 			?per_day,
 			?secs_from_midnight,
+			?secs_to_midnight,
+			?day_portion,
 			?gone,
 			?days_gone,
 			?target_day,

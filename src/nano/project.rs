@@ -66,34 +66,15 @@ impl Project {
 		&self.data.title
 	}
 
-	/// Words that are already accounted for in past goals.
-	fn accounted_words(&self) -> u64 {
-		if self.goals.is_empty() {
-			return 0;
-		}
-
-		let mut past_goals: Vec<&Goal> = self
-			.goals
-			.iter()
-			.filter(|goal| !goal.is_current())
-			.collect();
-		if past_goals.len() == self.goals.len() {
-			past_goals.sort_by_key(|goal| goal.data.starts_at);
-			past_goals.pop();
-		}
-
-		past_goals
-			.into_iter()
-			.map(|goal| goal.data.current_count)
-			.sum()
-	}
-
 	/// Wordcount for current goal
 	pub fn wordcount(&self) -> u64 {
+            if let Some(goal) = self.current_goal() {
+                goal.data.current_count
+            } else {
 		self.data
 			.unit_count
 			.unwrap_or(0)
-			.saturating_sub(self.accounted_words())
+            }
 	}
 
 	fn current_goals(&self) -> Vec<&Goal> {

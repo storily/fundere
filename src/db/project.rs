@@ -145,10 +145,13 @@ impl Project {
 			}
 
 			if let Some(prog) = goal.progress() {
-				write!(deets, "{:.2}% done", prog.percent).into_diagnostic()?;
+				write!(deets, "{:.2}% done", prog.percent).ok();
 				if prog.percent < 100.0 {
-					if prog.today.diff == 0 && prog.live.diff == 0 {
-						write!(deets, ", on track").into_diagnostic()?;
+					if prog.today.diff == 0 {
+						write!(deets, ", on track").ok();
+						if prog.live.diff != 0 {
+							write!(deets, " / {live} live", live = tracking(prog.live.diff)).ok();
+						}
 					} else {
 						write!(
 							deets,
@@ -156,16 +159,16 @@ impl Project {
 							today = tracking(prog.today.diff),
 							live = tracking(prog.live.diff)
 						)
-						.into_diagnostic()?;
+						.ok();
 					}
 				}
 
 				if !(goal.is_november() && goal.data.goal == 50_000) {
-					write!(deets, ", {} goal", numberk(goal.data.goal as _)).into_diagnostic()?;
+					write!(deets, ", {} goal", numberk(goal.data.goal as _)).ok();
 				}
 			}
 		} else {
-			write!(deets, "no goal").into_diagnostic()?;
+			write!(deets, "no goal").ok();
 		}
 
 		Ok(format!("“{title}”: **{count}** words ({deets})"))
