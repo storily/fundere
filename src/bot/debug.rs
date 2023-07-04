@@ -88,7 +88,7 @@ async fn throw_error(
 }
 
 async fn ping_maintainer(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::ephemeral(&interaction)).await?;
 
 	let maintainer = Id::new(match app.config.discord.maintainer_id {
 		Some(id) => id,

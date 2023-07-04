@@ -1,8 +1,9 @@
 use miette::{IntoDiagnostic, Result};
 use twilight_model::{
 	application::interaction::Interaction,
-	http::interaction::{InteractionResponse, InteractionResponseType},
+	http::interaction::{InteractionResponse, InteractionResponseType, InteractionResponseData},
 	id::{marker::InteractionMarker, Id},
+	channel::message::MessageFlags,
 };
 
 use super::{Action, ActionClass, Args};
@@ -11,6 +12,7 @@ use super::{Action, ActionClass, Args};
 pub struct CommandAck {
 	pub id: Id<InteractionMarker>,
 	pub token: String,
+	pub ephemeral: bool,
 }
 impl CommandAck {
 	#[tracing::instrument(name = "CommandAck", skip(interaction))]
@@ -18,6 +20,17 @@ impl CommandAck {
 		ActionClass::CommandAck(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
+			ephemeral: false,
+		})
+		.into()
+	}
+
+	#[tracing::instrument(name = "CommandAck:ephemeral", skip(interaction))]
+	pub fn ephemeral(interaction: &Interaction) -> Action {
+		ActionClass::CommandAck(Self {
+			id: interaction.id,
+			token: interaction.token.clone(),
+			ephemeral: true,
 		})
 		.into()
 	}
@@ -29,7 +42,14 @@ impl CommandAck {
 				&self.token,
 				&InteractionResponse {
 					kind: InteractionResponseType::DeferredChannelMessageWithSource,
-					data: None,
+					data: if self.ephemeral {
+						Some(InteractionResponseData {
+							flags: Some(MessageFlags::EPHEMERAL),
+							..Default::default()
+						})
+					} else {
+						None
+					},
 				},
 			)
 			.await

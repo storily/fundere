@@ -99,10 +99,13 @@ pub async fn on_command(
 async fn show(app: App, interaction: &Interaction) -> Result<()> {
 	let member = Member::try_from(interaction)?;
 	app.do_action(CommandAck::new(&interaction)).await?;
-
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
+	show_followup(app, interaction, project).await
+}
+
+async fn show_followup(app: App, interaction: &Interaction, project: Project) -> Result<()> {
 	let text = project.show_text(app.clone()).await?;
 	debug!(?project, ?text, "about to show this");
 
@@ -131,7 +134,7 @@ async fn set_project(
 	} else {
 		input
 	};
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction)).await?;
 
 	let member = Member::try_from(interaction)?;
 	let client = NanowrimoLogin::client_for_member_or_default(app.clone(), member).await?;
@@ -157,8 +160,9 @@ async fn set_project(
 			..Default::default()
 		},
 	))
-	.await
-	.map(drop)
+	.await?;
+
+	show_followup(app, interaction, project).await
 }
 
 async fn override_goal(
@@ -169,7 +173,7 @@ async fn override_goal(
 	let goal = get_integer(options, "words").ok_or_else(|| miette!("missing goal in words"))?;
 
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction)).await?;
 
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
@@ -194,8 +198,9 @@ async fn override_goal(
 			..Default::default()
 		},
 	))
-	.await
-	.map(drop)
+	.await?;
+
+	show_followup(app, interaction, project).await
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -225,7 +230,7 @@ async fn record_words(
 	debug!(?words, "words record: parsed input");
 
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction)).await?;
 
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
@@ -262,6 +267,7 @@ async fn record_words(
 			..Default::default()
 		},
 	))
-	.await
-	.map(drop)
+	.await?;
+
+	show_followup(app, interaction, project).await
 }

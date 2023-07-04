@@ -114,7 +114,7 @@ pub async fn on_modal(
 
 async fn status(app: App, interaction: &Interaction, _options: &[CommandDataOption]) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction)).await?;
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
@@ -189,7 +189,7 @@ async fn login(
 		})
 		.ok_or_else(|| miette!("password is a required field"))?;
 
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::ephemeral(&interaction)).await?;
 
 	let login = match NanowrimoLogin::get_for_member(app.clone(), member).await? {
 		Some(mut login) => {
@@ -235,7 +235,7 @@ async fn login(
 
 async fn logout(app: App, interaction: &Interaction, _options: &[CommandDataOption]) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction)).await?;
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
