@@ -1,6 +1,7 @@
 use std::{fmt, str::FromStr, sync::OnceLock};
 
 use is_prime::is_prime as check_prime;
+use itertools::Itertools;
 use pcre2::bytes::Regex;
 
 #[derive(Clone, Copy, Debug)]
@@ -79,6 +80,27 @@ impl Effect {
 		}
 
 		all
+	}
+
+	pub fn decorate(n: u64, is_complete: bool) -> String {
+		let mut pretties = Self::all_from(n);
+		if is_complete {
+			pretties.insert(0, Self::Complete);
+		}
+
+		format!(
+			"{fwd}{n}{rev}",
+			fwd = pretties.iter().map(|e| e.to_string()).join(""),
+			rev = pretties.into_iter().rev().map(|e| e.to_string()).join("")
+		)
+	}
+
+	pub fn on_after(mut n: u64) -> u64 {
+		while Self::all_from(n + 1).is_empty() {
+			n += 1;
+		}
+
+		n
 	}
 }
 
@@ -178,6 +200,14 @@ fn test_is_palindrome() {
 	assert!(!is_palindrome(12345321));
 	assert!(!is_palindrome(123432));
 	assert!(!is_palindrome(10000000000));
+}
+
+pub fn palindrome_after(mut n: u64) -> u64 {
+	while !is_palindrome(n + 1) {
+		n += 1;
+	}
+
+	n
 }
 
 fn is_all_same_digit(n: u64) -> bool {
