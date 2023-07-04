@@ -23,28 +23,22 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		action::{
-			SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning, SprintJoined,
-			SprintStart, SprintStartWarning,
+			ComponentAck, SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning,
+			SprintJoined, SprintLeft, SprintStart, SprintStartWarning, SprintSummary, SprintUpdate,
+			SprintWordsEnd, SprintWordsStart,
 		},
-		context::Timer,
+		context::{GenericResponse, GenericResponseData, Timer},
 		utils::{
 			command::{get_integer, get_string},
 			time::parse_when_relative_to,
 		},
+		App,
 	},
 	db::{
 		channel::Channel,
 		member::Member,
 		sprint::{Sprint, SprintStatus},
 	},
-};
-
-use super::{
-	action::{
-		CommandAck, SprintLeft, SprintSummary, SprintUpdate, SprintWordsEnd, SprintWordsStart,
-	},
-	context::{GenericResponse, GenericResponseData},
-	App,
 };
 
 #[tracing::instrument]
@@ -459,7 +453,7 @@ async fn sprint_set_words(
 		app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
 			.await?;
 	} else {
-		app.do_action(CommandAck::new(&interaction)).await?;
+		app.do_action(ComponentAck::new(&interaction)).await?;
 	}
 
 	Ok(())

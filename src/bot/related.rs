@@ -9,6 +9,7 @@ use twilight_util::builder::command::{CommandBuilder, StringBuilder};
 use url::Url;
 
 use crate::bot::{
+	action::CommandAck,
 	context::{GenericResponse, GenericResponseData},
 	utils::command::get_string,
 };
@@ -39,6 +40,7 @@ pub async fn on_command(
 	command_data: &CommandData,
 ) -> Result<()> {
 	let word = get_string(&command_data.options, "word").ok_or(miette!("needs a word"))?;
+	app.do_action(CommandAck::new(&interaction)).await?;
 	debug!(?word, "related arguments");
 
 	let mut url = Url::parse("https://relatedwords.org/api/related").unwrap();

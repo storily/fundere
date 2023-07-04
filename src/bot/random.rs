@@ -16,6 +16,7 @@ use twilight_util::builder::command::{
 };
 
 use crate::bot::{
+	action::CommandAck,
 	context::{GenericResponse, GenericResponseData},
 	utils::command::{get_integer, get_string},
 };
@@ -185,6 +186,7 @@ async fn number(app: App, interaction: &Interaction, options: &[CommandDataOptio
 	let count = get_integer(options, "count").unwrap_or(1);
 	let min = get_integer(options, "min").unwrap_or(0);
 	let max = get_integer(options, "max").unwrap_or(i64::MAX);
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	let result = (0..count)
 		.map(|_| rand::thread_rng().gen_range(min..=max))
@@ -206,6 +208,7 @@ async fn suit(app: App, interaction: &Interaction, options: &[CommandDataOption]
 	let count = get_integer(options, "count").unwrap_or(1);
 	let variant = get_string(options, "variant").unwrap_or("all");
 	let variant = cards::SuitVariant::from_str(&variant)?;
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	let result = (0..count)
 		.map(|_| variant.random())
@@ -227,6 +230,7 @@ async fn value(app: App, interaction: &Interaction, options: &[CommandDataOption
 	let count = get_integer(options, "count").unwrap_or(1);
 	let variant = get_string(options, "variant").unwrap_or("all");
 	let variant = cards::ValueVariant::from_str(&variant)?;
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	let result = (0..count)
 		.map(|_| variant.random())
@@ -248,6 +252,7 @@ async fn card(app: App, interaction: &Interaction, options: &[CommandDataOption]
 	let count = get_integer(options, "count").unwrap_or(1);
 	let variant = get_string(options, "variant").unwrap_or("all");
 	let variant = cards::DeckVariant::from_str(&variant)?;
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	let result = variant
 		.hand(count as _)

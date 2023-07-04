@@ -8,14 +8,14 @@ use twilight_model::{
 use super::{Action, ActionClass, Args};
 
 #[derive(Debug, Clone)]
-pub struct CommandAck {
+pub struct ComponentAck {
 	pub id: Id<InteractionMarker>,
 	pub token: String,
 }
-impl CommandAck {
-	#[tracing::instrument(name = "CommandAck", skip(interaction))]
+impl ComponentAck {
+	#[tracing::instrument(name = "ComponentAck", skip(interaction))]
 	pub fn new(interaction: &Interaction) -> Action {
-		ActionClass::CommandAck(Self {
+		ActionClass::ComponentAck(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 		})
@@ -28,7 +28,7 @@ impl CommandAck {
 				self.id,
 				&self.token,
 				&InteractionResponse {
-					kind: InteractionResponseType::DeferredChannelMessageWithSource,
+					kind: InteractionResponseType::DeferredUpdateMessage,
 					data: None,
 				},
 			)

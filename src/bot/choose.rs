@@ -10,6 +10,7 @@ use twilight_model::application::{
 use twilight_util::builder::command::{CommandBuilder, IntegerBuilder, StringBuilder};
 
 use crate::bot::{
+	action::CommandAck,
 	context::{GenericResponse, GenericResponseData},
 	utils::command::{get_integer, get_string},
 };
@@ -51,6 +52,7 @@ pub async fn on_command(
 	let items_str =
 		get_string(&command_data.options, "items").ok_or(miette!("need at least one item"))?;
 	debug!(items=?items_str, ?count, "choose arguments");
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	let or = Regex::new(r"(?i)\s+or\s+").unwrap();
 	let mut items: Vec<&str> = or.split(items_str).map(|i| i.trim()).collect();

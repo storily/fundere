@@ -44,6 +44,7 @@ macro_rules! action {
 action!(
 	calc_result: CalcResult,
 	command_ack: CommandAck,
+	component_ack: ComponentAck,
 	command_error: CommandError,
 	nanowrimo_login_confirm: NanowrimoLoginConfirm,
 	nanowrimo_login_modal: NanowrimoLoginModal,

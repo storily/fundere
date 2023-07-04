@@ -7,7 +7,7 @@ use twilight_model::application::{
 use twilight_util::builder::command::{BooleanBuilder, CommandBuilder, StringBuilder};
 
 use crate::bot::{
-	action::CalcResult,
+	action::{CalcResult, CommandAck},
 	utils::command::{get_boolean, get_string},
 };
 
@@ -40,6 +40,7 @@ pub async fn on_command(
 ) -> Result<()> {
 	let public = get_boolean(&command_data.options, "public").unwrap_or(false);
 	let input = get_string(&command_data.options, "input").ok_or(miette!("input is required"))?;
+	app.do_action(CommandAck::new(&interaction)).await?;
 	debug!(?input, "calculating");
 
 	let mut context = fend_core::Context::new();
