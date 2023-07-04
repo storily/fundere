@@ -1,6 +1,7 @@
 use twilight_model::channel::message::component::{ActionRow, Component};
 
 pub mod command;
+pub mod pretties;
 pub mod time;
 
 pub fn action_row(components: Vec<Component>) -> Vec<Component> {
