@@ -49,8 +49,13 @@ pub fn command() -> Result<Command> {
 			),
 		)
 		.option(
-			SubCommandBuilder::new("record", "Set your word count")
-				.option(IntegerBuilder::new("words", "New total word count").required(true)),
+			SubCommandBuilder::new("record", "Set your word count").option(
+				StringBuilder::new(
+					"words",
+					"New total word count, or relative using ++/-- prefixes",
+				)
+				.required(true),
+			),
 		)
 		.validate()
 		.into_diagnostic()
@@ -189,8 +194,8 @@ async fn override_goal(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Record {
-	Absolute,
-	Relative,
+	Absolute(u64),
+	Relative(i64),
 }
 
 async fn record_words(
@@ -198,20 +203,20 @@ async fn record_words(
 	interaction: &Interaction,
 	options: &[CommandDataOption],
 ) -> Result<()> {
-	let (words, method) = get_integer(options, "words")
-		.map(|n| (n, Record::Absolute))
-		.or_else(|| {
-			get_string(options, "words").and_then(|ws| {
-				if let Some(num) = ws.strip_prefix("+") {
-					i64::from_str(num).ok().map(|n| (n, Record::Relative))
-				} else if let Some(num) = ws.strip_prefix("-") {
-					i64::from_str(num).ok().map(|n| (-n, Record::Relative))
-				} else {
-					None
-				}
-			})
-		})
-		.ok_or_else(|| miette!("missing words"))?;
+	let words = get_string(options, "words")
+		.ok_or_else(|| miette!("missing words"))
+		.and_then(|input| {
+			debug!(?input, "words record: raw input");
+			if input.starts_with('+') {
+				i64::from_str(input.trim_start_matches('+')).map(|n| Record::Relative(n))
+			} else if input.starts_with('-') {
+				i64::from_str(input.trim_start_matches('-')).map(|n| Record::Relative(-n))
+			} else {
+				u64::from_str(input).map(|n| Record::Absolute(n))
+			}
+			.into_diagnostic()
+		})?;
+	debug!(?words, "words record: parsed input");
 
 	let member = Member::try_from(interaction)?;
 	let project = Project::get_for_member(app.clone(), member)
@@ -228,10 +233,9 @@ async fn record_words(
 		return Err(miette!("no goal set up on the nano site"));
 	};
 
-	let session_word_count = if let Record::Absolute = method {
-		words - (nano_project.wordcount() as i64)
-	} else {
-		words
+	let session_word_count = match words {
+		Record::Absolute(n) => n.saturating_sub(nano_project.wordcount()) as i64,
+		Record::Relative(n) => n,
 	};
 
 	debug!(?member, ?project.id, ?nano_project, ?session_word_count, "posting new wordcount session to nano");

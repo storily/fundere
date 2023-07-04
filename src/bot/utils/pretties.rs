@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr, sync::OnceLock};
+use std::{fmt, sync::OnceLock};
 
 use is_prime::is_prime as check_prime;
 use itertools::Itertools;
@@ -82,16 +82,23 @@ impl Effect {
 		all
 	}
 
-	pub fn decorate(n: u64, is_complete: bool) -> String {
+	pub fn decorate(n: u64, is_complete: bool) -> (bool, String) {
 		let mut pretties = Self::all_from(n);
+		if pretties.is_empty() {
+			return (false, n.to_string());
+		}
+
 		if is_complete {
 			pretties.insert(0, Self::Complete);
 		}
 
-		format!(
-			"{fwd}{n}{rev}",
-			fwd = pretties.iter().map(|e| e.to_string()).join(""),
-			rev = pretties.into_iter().rev().map(|e| e.to_string()).join("")
+		(
+			true,
+			format!(
+				"{fwd}{n}{rev}",
+				fwd = pretties.iter().map(|e| e.to_string()).join(""),
+				rev = pretties.into_iter().rev().map(|e| e.to_string()).join("")
+			),
 		)
 	}
 
@@ -100,7 +107,7 @@ impl Effect {
 			n += 1;
 		}
 
-		n
+		n + 1
 	}
 }
 
@@ -207,7 +214,7 @@ pub fn palindrome_after(mut n: u64) -> u64 {
 		n += 1;
 	}
 
-	n
+	n + 1
 }
 
 fn is_all_same_digit(n: u64) -> bool {

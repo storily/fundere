@@ -6,7 +6,13 @@ use tokio_postgres::Row;
 use tracing::debug;
 use uuid::Uuid;
 
-use crate::{bot::App, nano::project::Project as NanoProject};
+use crate::{
+	bot::{
+		utils::pretties::{palindrome_after, Effect},
+		App,
+	},
+	nano::project::Project as NanoProject,
+};
 
 use super::member::Member;
 
@@ -137,6 +143,7 @@ impl Project {
 		let title = proj.title();
 		let count = proj.wordcount();
 
+		let (mut decorated, mut words) = Effect::decorate(count, false);
 		let mut deets = String::new();
 
 		if let Some(mut goal) = proj.current_goal().cloned() {
@@ -145,6 +152,8 @@ impl Project {
 			}
 
 			if let Some(prog) = goal.progress() {
+				(decorated, words) = Effect::decorate(count, prog.percent >= 100.0);
+
 				write!(deets, "{:.2}% done", prog.percent).ok();
 				if prog.percent < 100.0 {
 					if prog.today.diff == 0 {
@@ -171,7 +180,29 @@ impl Project {
 			write!(deets, "no goal").ok();
 		}
 
-		Ok(format!("“{title}”: **{count}** words ({deets})"))
+		if !decorated {
+			let next_pretty = Effect::on_after(count);
+			let next_palindrome = palindrome_after(count);
+
+			if next_pretty == next_palindrome {
+				write!(
+					deets,
+					", {} to next pal",
+					next_palindrome.saturating_sub(count)
+				)
+				.ok();
+			} else {
+				write!(
+					deets,
+					", {}/{} to next pretty/pal",
+					next_pretty.saturating_sub(count),
+					next_palindrome.saturating_sub(count)
+				)
+				.ok();
+			}
+		}
+
+		Ok(format!("“{title}”: **{words}** words ({deets})"))
 	}
 }
 
