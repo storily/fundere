@@ -52,6 +52,10 @@ db {
 	keepalives-idle 7200
 }
 
+// URL to Nominare web service
+// If not provided the /names command won't work.
+// nominare-url "http://localhost:8000"
+
 // reference for internal settings, values are defaults
 internal {
 	// The size of the buffer used to pass around timers in the application.

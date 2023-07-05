@@ -34,7 +34,7 @@ use twilight_model::{
 use twilight_util::builder::InteractionResponseDataBuilder;
 
 use super::action::Action;
-use crate::{config::Config, db::sprint::Sprint};
+use crate::{config::Config, db::sprint::Sprint, nominare::Nominare};
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
@@ -46,12 +46,14 @@ pub struct AppContext {
 	pub db: PgClient,
 	pub client: Client,
 	pub timer: Sender<Timer>,
+	pub nominare: Option<Nominare>,
 }
 
 impl App {
-	pub fn new(config: Config, db: PgClient, timer: Sender<Timer>) -> Self {
+	pub fn new(mut config: Config, db: PgClient, timer: Sender<Timer>) -> Self {
 		let client = Client::new(config.discord.token.clone());
 		Self(Arc::new(AppContext {
+			nominare: config.nominare_url.take().map(|url| Nominare::new(&url)),
 			config,
 			db,
 			client,

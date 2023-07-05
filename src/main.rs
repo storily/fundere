@@ -8,6 +8,7 @@ pub(crate) mod bot;
 pub(crate) mod config;
 pub(crate) mod db;
 pub(crate) mod nano;
+pub(crate) mod nominare;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()

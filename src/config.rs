@@ -19,6 +19,9 @@ pub struct Config {
 
 	#[knuffel(child, default)]
 	pub internal: InternalConfig,
+
+	#[knuffel(child, unwrap(argument), default)]
+	pub nominare_url: Option<String>,
 }
 
 impl Config {

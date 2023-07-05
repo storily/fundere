@@ -22,6 +22,7 @@ pub mod calc;
 pub mod choose;
 pub mod context;
 pub mod debug;
+pub mod names;
 pub mod nanowrimo;
 pub mod random;
 pub mod related;
@@ -43,12 +44,13 @@ pub async fn start(config: Config) -> Result<()> {
 	{
 		let interaction_client = app.interaction_client();
 
-		info!("register commands: calc, debug, sprint");
+		info!("register commands");
 		interaction_client
 			.set_global_commands(&[
 				calc::command()?,
 				choose::command()?,
 				debug::command()?,
+				names::command()?,
 				nanowrimo::command()?,
 				random::command()?,
 				related::command()?,
@@ -167,6 +169,9 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					"debug" => debug::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: debug"),
+					"names" => names::on_command(app.clone(), interaction, &data)
+						.await
+						.wrap_err("command: names"),
 					"nanowrimo" => nanowrimo::on_command(app.clone(), interaction, &data)
 						.await
 						.wrap_err("command: nanowrimo"),
