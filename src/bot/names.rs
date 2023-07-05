@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use miette::{IntoDiagnostic, Result};
 
-use tracing::warn;
+use tracing::{debug, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
 	interaction::{application_command::CommandData, Interaction},
@@ -82,45 +82,56 @@ pub async fn on_command(
 	command_data: &CommandData,
 ) -> Result<()> {
 	let Some(ref nominare) = app.nominare else {
-return	app.send_response(GenericResponse::from_interaction(
-		interaction,
-		GenericResponseData {
-			content: Some("Sorry! /names is not activated for this bot".to_string()),
-			ephemeral: true,
-			..Default::default()
-		},
-	))
-	.await.map(drop);
-		};
-
-	let options = &command_data.options;
+		return app.send_response(GenericResponse::from_interaction(
+			interaction,
+			GenericResponseData {
+				content: Some("Sorry! /names is not activated for this bot".to_string()),
+				ephemeral: true,
+				..Default::default()
+			},
+		))
+		.await
+		.map(drop);
+	};
 
 	let query = [
-		get_integer(options, "count").map(|n| n.to_string()),
-		get_string(options, "gender").map(|n| n.to_string()),
-		get_string(options, "part").map(|n| n.to_string()),
-		get_string(options, "kind").map(|n| n.to_string()),
-		get_string(options, "common").map(|n| n.to_string()),
-		get_integer(options, "frequency").map(|n| format!("{n}%")),
+		get_integer(&command_data.options, "count").map(|n| n.to_string()),
+		get_string(&command_data.options, "gender").map(|n| n.to_string()),
+		get_string(&command_data.options, "part").map(|n| n.to_string()),
+		get_string(&command_data.options, "kind").map(|n| n.to_string()),
+		get_string(&command_data.options, "common").map(|n| n.to_string()),
+		get_integer(&command_data.options, "frequency").map(|n| format!("{n}%")),
 	]
-	.iter()
-	.filter_map(|x| x.as_ref())
-	.join(" ");
-	warn!(?query, "nominare: query");
-	app.do_action(CommandAck::ephemeral(&interaction)).await?;
+		.iter()
+		.filter_map(|x| x.as_ref())
+		.join(" ");
+	debug!(?query, "nominare: query");
+	app.do_action(CommandAck::new(&interaction)).await?;
 
-	let names = nominare
+	let mut names = nominare
 		.search(&query)
 		.await
-		.into_diagnostic()?
-		.into_iter()
-		.map(|name| format!("**{name}**"))
+		.into_diagnostic()?;
+	debug!(?query, ?names, "nominare: results");
+
+	let mut response: String = names
+		.iter()
+		.map(|name| name.to_string())
 		.join(", ");
+
+	while response.len() > 2000 {
+		warn!(responses=?response.len(), "response too long, dropping a name");
+		names.pop();
+		response = names
+			.iter()
+			.map(|name| name.to_string())
+			.join(", ");
+	}
 
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
-			content: Some(names),
+			content: Some(response),
 			..Default::default()
 		},
 	))
