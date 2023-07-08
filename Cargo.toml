@@ -22,7 +22,7 @@ futures-util = "0.3.24"
 humantime = "2.1.0"
 is_prime = "2.0.9"
 itertools = "0.10.5"
-knuffel = "2.0.0"
+knuffel = "3.2.0"
 miette = { version = "4.7.1", features = ["fancy"] }
 pcre2 = "0.2.4"
 pg_interval = "0.4.1"
