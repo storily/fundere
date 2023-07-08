@@ -24,8 +24,8 @@ use crate::{
 	bot::{
 		action::{
 			CommandAck, ComponentAck, SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning,
-			SprintJoined, SprintLeft, SprintStart, SprintStartWarning, SprintSummary, SprintUpdate,
-			SprintWordsEnd, SprintWordsStart,
+			SprintJoined, SprintLeft, SprintSaveWords, SprintStart, SprintStartWarning,
+			SprintSummary, SprintUpdate, SprintWordsEnd, SprintWordsStart,
 		},
 		context::{GenericResponse, GenericResponseData, Timer},
 		utils::{
@@ -277,7 +277,7 @@ async fn sprint_new(
 				None
 			})
 			.unwrap_or(chrono_tz::Pacific::Auckland),
-			// TODO: default first to a config option
+		// TODO: default first to a config option
 	);
 
 	let when = parse_when_relative_to(now.time(), get_string(options, "when").unwrap_or("15m"))?;
@@ -463,15 +463,18 @@ async fn sprint_set_words(
 
 	sprint.set_words(app.clone(), member, words, column).await?;
 
-	if column == "words_end"
-		&& sprint
+	if column == "words_end" {
+		if let Some(act) = SprintSaveWords::new(app.clone(), &interaction, &sprint, member).await? {
+			app.do_action(act).await?;
+		}
+
+		if sprint
 			.all_participants_have_ending_words(app.clone())
 			.await?
-	{
-		app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
-			.await?;
-	} else {
-		app.do_action(ComponentAck::new(&interaction)).await?;
+		{
+			app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
+				.await?;
+		}
 	}
 
 	Ok(())

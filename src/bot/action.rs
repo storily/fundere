@@ -59,5 +59,6 @@ action!(
 	sprint_end_warning: SprintEndWarning,
 	sprint_start_warning: SprintStartWarning,
 	sprint_words_end: SprintWordsEnd,
-	sprint_words_start: SprintWordsStart
+	sprint_words_start: SprintWordsStart,
+	sprint_save_words: SprintSaveWords
 );

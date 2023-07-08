@@ -55,6 +55,14 @@ impl Participant {
 			words_end: row.try_get("words_end").into_diagnostic()?,
 		})
 	}
+
+	pub fn words_written(&self) -> Option<i32> {
+		if let (Some(start), Some(end)) = (self.words_start, self.words_end) {
+			Some(end - start)
+		} else {
+			None
+		}
+	}
 }
 
 #[derive(Debug, Clone)]
