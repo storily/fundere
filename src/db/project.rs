@@ -171,10 +171,14 @@ impl Project {
 						.ok();
 					}
 				}
+			}
 
-				if !(goal.is_november() && goal.data.goal == 50_000) {
-					write!(deets, ", {} goal", numberk(goal.data.goal as _)).ok();
-				}
+			if let Some(streak) = goal.data.streak {
+				write!(deets, ", {streak} day streak").ok();
+			}
+
+			if !(goal.is_november() && goal.data.goal == 50_000) {
+				write!(deets, ", {} goal", numberk(goal.data.goal as _)).ok();
 			}
 		} else {
 			write!(deets, "no goal").ok();
