@@ -12,6 +12,7 @@ use crate::{
 		utils::{action_row},
 	},
 	db::{project::Project, sprint::Sprint, member::Member, nanowrimo_login::NanowrimoLogin},
+	nano::project::Project as NanoProject,
 };
 
 use super::{Action, ActionClass, Args};
@@ -33,6 +34,14 @@ impl SprintSaveWords {
 				return Ok(None);
 			};
 
+		if !login.ask_me {
+			return Ok(None);
+		}
+
+		let client = login.client().await?;
+		let nano_proj = NanoProject::fetch_with_client(client, project.nano_id).await?;
+		let title = nano_proj.title();
+
 		let participant = sprint.participant(app.clone(), member).await?;
 		let Some(diff) = participant.words_written() else {
 			return Ok(None);
@@ -46,18 +55,18 @@ impl SprintSaveWords {
 			interaction,
 			GenericResponseData {
 				ephemeral: true,
-				content: Some(format!("Add {diff} words to nanowrimo.org?")),
+				content: Some(format!("Save {diff:+} words to «{title}» on Nanowrimo?")),
 				components: action_row(vec![
 					Component::Button(Button {
 						custom_id: Some(format!("sprint:save-words:{}:{}", sprint.id, project.id)),
 						disabled: false,
 						emoji: None,
-						label: Some("Yes".to_string()),
-						style: ButtonStyle::Primary,
+						label: Some("Yes please!".to_string()),
+						style: ButtonStyle::Success,
 						url: None,
 					}),
 					Component::Button(Button {
-						custom_id: Some(format!("sprint:ask-not:{}", login.id)),
+						custom_id: Some(format!("sprint:save-never:{}", login.id)),
 						disabled: false,
 						emoji: None,
 						label: Some("Don't ask me again".to_string()),

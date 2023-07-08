@@ -102,10 +102,10 @@ async fn show(app: App, interaction: &Interaction) -> Result<()> {
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
-	show_followup(app, interaction, project).await
+	show_followup(app, interaction, &project).await
 }
 
-async fn show_followup(app: App, interaction: &Interaction, project: Project) -> Result<()> {
+async fn show_followup(app: App, interaction: &Interaction, project: &Project) -> Result<()> {
 	let text = project.show_text(app.clone()).await?;
 	debug!(?project, ?text, "about to show this");
 
@@ -162,7 +162,7 @@ async fn set_project(
 	))
 	.await?;
 
-	show_followup(app, interaction, project).await
+	show_followup(app, interaction, &project).await
 }
 
 async fn override_goal(
@@ -200,11 +200,11 @@ async fn override_goal(
 	))
 	.await?;
 
-	show_followup(app, interaction, project).await
+	show_followup(app, interaction, &project).await
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Record {
+pub enum SaveWords {
 	Absolute(u64),
 	Relative(i64),
 }
@@ -219,11 +219,11 @@ async fn record_words(
 		.and_then(|input| {
 			debug!(?input, "words record: raw input");
 			if input.starts_with('+') {
-				i64::from_str(input.trim_start_matches('+')).map(|n| Record::Relative(n))
+				i64::from_str(input.trim_start_matches('+')).map(|n| SaveWords::Relative(n))
 			} else if input.starts_with('-') {
-				i64::from_str(input.trim_start_matches('-')).map(|n| Record::Relative(-n))
+				i64::from_str(input.trim_start_matches('-')).map(|n| SaveWords::Relative(-n))
 			} else {
-				u64::from_str(input).map(|n| Record::Absolute(n))
+				u64::from_str(input).map(|n| SaveWords::Absolute(n))
 			}
 			.into_diagnostic()
 		})?;
@@ -235,29 +235,38 @@ async fn record_words(
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
-	let client = NanowrimoLogin::get_for_member(app.clone(), member)
+	let login = NanowrimoLogin::get_for_member(app.clone(), member)
 		.await?
-		.ok_or_else(|| miette!("You need to /nanowrimo login to be able to record words!"))?
-		.client()
-		.await?;
+		.ok_or_else(|| miette!("You need to /nanowrimo login to be able to record words!"))?;
 
+	save_words(app, interaction, &login, &project, words).await
+}
+
+pub async fn save_words(
+	app: App,
+	interaction: &Interaction,
+	login: &NanowrimoLogin,
+	project: &Project,
+	words: SaveWords,
+) -> Result<()> {
+	let client = login.client().await?;
 	let nano_project = NanoProject::fetch_with_client(client.clone(), project.nano_id).await?;
 	let Some(goal) = nano_project.current_goal() else {
 		return Err(miette!("no goal set up on the nano site"));
 	};
 
 	let session_word_count = match words {
-		Record::Absolute(n) => n.saturating_sub(nano_project.wordcount()) as i64,
-		Record::Relative(n) => n,
+		SaveWords::Absolute(n) => n.saturating_sub(nano_project.wordcount()) as i64,
+		SaveWords::Relative(n) => n,
 	};
 
-	debug!(?member, ?project.id, ?nano_project, ?session_word_count, "posting new wordcount session to nano");
+	debug!(?project.id, ?nano_project, ?session_word_count, "posting new wordcount session to nano");
 	let saved_session = client
 		.add_project_session(nano_project.id, goal.id, session_word_count)
 		.await
 		.into_diagnostic()
 		.wrap_err("nano: failed to update wordcount")?;
-	debug!(?member, ?project.id, ?nano_project, ?session_word_count, ?saved_session, "created wordcount session on nano");
+	debug!(?project.id, ?nano_project, ?session_word_count, ?saved_session, "created wordcount session on nano");
 
 	app.send_response(GenericResponse::from_interaction(
 		interaction,

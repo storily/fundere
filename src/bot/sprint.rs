@@ -32,11 +32,14 @@ use crate::{
 			command::{get_integer, get_string},
 			time::parse_when_relative_to,
 		},
+		words::{save_words as save_words_action, SaveWords},
 		App,
 	},
 	db::{
 		channel::Channel,
 		member::Member,
+		nanowrimo_login::NanowrimoLogin,
+		project::Project,
 		sprint::{Sprint, SprintStatus},
 	},
 };
@@ -134,6 +137,14 @@ pub async fn on_component(
 		["end-words", uuid] => sprint_words_end(app.clone(), interaction, *uuid)
 			.await
 			.wrap_err("action: words modal: end")?,
+		["save-words", sprint_id, project_id] => {
+			save_words(app.clone(), interaction, *sprint_id, *project_id)
+				.await
+				.wrap_err("action: save words")?
+		}
+		["save-never", nano_login_id] => save_never(app.clone(), interaction, *nano_login_id)
+			.await
+			.wrap_err("action: save words: don't ask again")?,
 		id => warn!(?id, "unhandled sprint component action"),
 	}
 
@@ -533,4 +544,57 @@ async fn sprint_summary(
 
 	app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
 		.await
+}
+
+async fn save_words(
+	app: App,
+	interaction: &Interaction,
+	sprint_id: &str,
+	project_id: &str,
+) -> Result<()> {
+	let member = Member::try_from(interaction)?;
+	let sprint_id = Uuid::from_str(sprint_id).into_diagnostic()?;
+	let project_id = Uuid::from_str(project_id).into_diagnostic()?;
+	app.do_action(ComponentAck::new(&interaction)).await?;
+
+	let sprint = Sprint::get(app.clone(), sprint_id)
+		.await
+		.wrap_err("sprint not found")?;
+	let participant = sprint.participant(app.clone(), member).await?;
+	let words = SaveWords::Relative(participant.words_written().unwrap_or(0).into());
+
+	let project = Project::get(app.clone(), project_id)
+		.await
+		.and_then(|opt| opt.ok_or_else(|| miette!("no project for {:?}", member)))
+		.wrap_err("project not found")?;
+
+	let login = NanowrimoLogin::get_for_member(app.clone(), member)
+		.await
+		.and_then(|opt| opt.ok_or_else(|| miette!("no nano login for {:?}", member)))?;
+
+	save_words_action(app, interaction, &login, &project, words).await
+}
+
+async fn save_never(app: App, interaction: &Interaction, login_id: &str) -> Result<()> {
+	let login_id = Uuid::from_str(login_id).into_diagnostic()?;
+	app.do_action(ComponentAck::new(&interaction)).await?;
+
+	let Some(mut login) = NanowrimoLogin::get(app.clone(), login_id)
+		.await
+		.wrap_err("login not found")? else{
+			return Ok(());
+		};
+
+	login.ask_me(app.clone(), false).await?;
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			ephemeral: true,
+			content: Some("Ok, no worries.".into()),
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
 }

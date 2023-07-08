@@ -20,6 +20,7 @@ pub struct NanowrimoLogin {
 	pub member: Member,
 	pub username: String,
 	pub password: SecretValue,
+	pub ask_me: bool,
 }
 
 impl NanowrimoLogin {
@@ -31,6 +32,7 @@ impl NanowrimoLogin {
 			member: row.try_get("member").into_diagnostic()?,
 			username: row.try_get("username").into_diagnostic()?,
 			password: row.try_get::<_, &str>("password").into_diagnostic()?.into(),
+			ask_me: row.try_get("ask_me").into_diagnostic()?,
 		})
 	}
 
@@ -127,6 +129,25 @@ impl NanowrimoLogin {
 			.await
 			.into_diagnostic()
 			.wrap_err("db: delete nanowrimo login")
+			.map(drop)
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn ask_me(&mut self, app: App, ask_me: bool) -> Result<()> {
+		self.ask_me = ask_me;
+		app.db
+			.query(
+				"
+				UPDATE nanowrimo_logins SET
+					ask_me = $2,
+					updated_at = CURRENT_TIMESTAMP
+				WHERE id = $1
+				",
+				&[&self.id, &ask_me],
+			)
+			.await
+			.into_diagnostic()
+			.wrap_err("db: update nanowrimo ask me")
 			.map(drop)
 	}
 
