@@ -102,30 +102,21 @@ pub async fn on_command(
 		get_string(&command_data.options, "common").map(|n| n.to_string()),
 		get_integer(&command_data.options, "frequency").map(|n| format!("{n}%")),
 	]
-		.iter()
-		.filter_map(|x| x.as_ref())
-		.join(" ");
+	.iter()
+	.filter_map(|x| x.as_ref())
+	.join(" ");
 	debug!(?query, "nominare: query");
 	app.do_action(CommandAck::new(&interaction)).await?;
 
-	let mut names = nominare
-		.search(&query)
-		.await
-		.into_diagnostic()?;
+	let mut names = nominare.search(&query).await.into_diagnostic()?;
 	debug!(?query, ?names, "nominare: results");
 
-	let mut response: String = names
-		.iter()
-		.map(|name| name.to_string())
-		.join(", ");
+	let mut response: String = names.iter().map(|name| name.to_string()).join(", ");
 
 	while response.len() > 2000 {
 		warn!(responses=?response.len(), "response too long, dropping a name");
 		names.pop();
-		response = names
-			.iter()
-			.map(|name| name.to_string())
-			.join(", ");
+		response = names.iter().map(|name| name.to_string()).join(", ");
 	}
 
 	app.send_response(GenericResponse::from_interaction(

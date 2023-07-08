@@ -138,16 +138,23 @@ impl NanowrimoLogin {
 	}
 
 	#[tracing::instrument(skip(app))]
-	pub async fn client_for_member_or_default(app: App, member: Member) -> Result<NanoClient> {
-		if let Some(login) = Self::get_for_member(app.clone(), member).await? {
-			debug!(?login.id, "trying member nano login");
-			login.client().await
-		} else if let Some(login) = Self::get_default(app).await? {
+	pub async fn default_client(app: App) -> Result<NanoClient> {
+		if let Some(login) = Self::get_default(app).await? {
 			debug!(?login.id, "trying default nano login");
 			login.client().await
 		} else {
 			debug!("falling back to guest nano login");
 			Ok(NanoClient::new_anon())
+		}
+	}
+
+	#[tracing::instrument(skip(app))]
+	pub async fn client_for_member_or_default(app: App, member: Member) -> Result<NanoClient> {
+		if let Some(login) = Self::get_for_member(app.clone(), member).await? {
+			debug!(?login.id, "trying member nano login");
+			login.client().await
+		} else {
+			Self::default_client(app).await
 		}
 	}
 }

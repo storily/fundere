@@ -1,4 +1,6 @@
+use chrono_tz::Tz;
 use miette::{miette, IntoDiagnostic, Report, Result};
+use nanowrimo::{NanoKind, ProjectObject};
 use postgres_types::{FromSql, ToSql};
 use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::{
@@ -11,7 +13,10 @@ use twilight_model::{
 };
 use uuid::Uuid;
 
-use crate::bot::App;
+use crate::{
+	bot::App,
+	db::{nanowrimo_login::NanowrimoLogin, project::Project},
+};
 
 // Discord snowflake IDs will never (read: unless they either change the
 // schema or we're 10k years in the future) reach even 60 bits of length
@@ -38,6 +43,32 @@ impl Member {
 	pub async fn name(self, app: App) -> Result<String> {
 		let member = self.to_member(app).await?;
 		Ok(member.nick.unwrap_or_else(|| member.user.name))
+	}
+
+	pub async fn timezone(self, app: App) -> Result<Option<Tz>> {
+		let user = if let Some(login) = NanowrimoLogin::get_for_member(app.clone(), self).await? {
+			let client = login.client().await?;
+			client.current_user().await.into_diagnostic()?
+		} else if let Some(project) = Project::get_for_member(app.clone(), self).await? {
+			let client = NanowrimoLogin::default_client(app.clone()).await?;
+			let nano_project = client
+				.get_id::<ProjectObject>(NanoKind::Project, project.nano_id)
+				.await
+				.into_diagnostic()?;
+			client
+				.get_id(NanoKind::User, nano_project.data.attributes.user_id)
+				.await
+				.into_diagnostic()?
+		} else {
+			return Ok(None);
+		};
+
+		user.data
+			.attributes
+			.time_zone
+			.parse()
+			.map(Some)
+			.map_err(|err| miette!("nano: fetch project user timezone: {}", err))
 	}
 }
 

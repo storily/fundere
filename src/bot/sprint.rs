@@ -23,7 +23,7 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		action::{
-			ComponentAck, CommandAck, SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning,
+			CommandAck, ComponentAck, SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning,
 			SprintJoined, SprintLeft, SprintStart, SprintStartWarning, SprintSummary, SprintUpdate,
 			SprintWordsEnd, SprintWordsStart,
 		},
@@ -264,8 +264,21 @@ async fn sprint_new(
 	}
 	let duration = Duration::minutes(duration);
 
-	// TODO: derive timezone or offset from calling user
-	let now = Utc::now().with_timezone(&chrono_tz::Pacific::Auckland);
+	let channel = Channel::try_from(interaction)?;
+	let member = Member::try_from(interaction)?;
+	app.do_action(CommandAck::new(&interaction)).await?;
+
+	let now = Utc::now().with_timezone(
+		&member
+			.timezone(app.clone())
+			.await
+			.unwrap_or_else(|error| {
+				error!(%error, ?member, "Ignoring errors when fetching member timezone");
+				None
+			})
+			.unwrap_or(chrono_tz::Pacific::Auckland),
+			// TODO: default first to a config option
+	);
 
 	let when = parse_when_relative_to(now.time(), get_string(options, "when").unwrap_or("15m"))?;
 
@@ -278,10 +291,6 @@ async fn sprint_new(
 	} else {
 		now_with_time
 	};
-
-	let channel = Channel::try_from(interaction)?;
-	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction)).await?;
 
 	debug!(%starting, %duration, ?channel, ?member, "recording sprint");
 	let sprint =
