@@ -23,7 +23,7 @@ use uuid::Uuid;
 use crate::{
 	bot::{
 		action::{
-			ComponentAck, SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning,
+			ComponentAck, CommandAck, SprintAnnounce, SprintCancelled, SprintEnd, SprintEndWarning,
 			SprintJoined, SprintLeft, SprintStart, SprintStartWarning, SprintSummary, SprintUpdate,
 			SprintWordsEnd, SprintWordsStart,
 		},
@@ -281,6 +281,7 @@ async fn sprint_new(
 
 	let channel = Channel::try_from(interaction)?;
 	let member = Member::try_from(interaction)?;
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	debug!(%starting, %duration, ?channel, ?member, "recording sprint");
 	let sprint =
@@ -307,6 +308,8 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 		return Err(miette!("sprint has already ended"));
 	}
 
+	app.do_action(ComponentAck::new(&interaction)).await?;
+
 	sprint.join(app.clone(), member).await?;
 
 	app.do_action(SprintJoined::new(&interaction, &sprint)?)
@@ -328,6 +331,8 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 	if sprint.status >= SprintStatus::Ended {
 		return Err(miette!("sprint has already ended"));
 	}
+
+	app.do_action(ComponentAck::new(&interaction)).await?;
 
 	sprint.leave(app.clone(), member).await?;
 
@@ -366,6 +371,8 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 	if sprint.status >= SprintStatus::Ended {
 		return Err(miette!("sprint has already ended"));
 	}
+
+	app.do_action(ComponentAck::new(&interaction)).await?;
 
 	sprint.cancel(app.clone()).await?;
 
@@ -443,6 +450,8 @@ async fn sprint_set_words(
 		.transpose()?
 		.unwrap_or(0);
 
+	app.do_action(ComponentAck::new(&interaction)).await?;
+
 	sprint.set_words(app.clone(), member, words, column).await?;
 
 	if column == "words_end"
@@ -465,6 +474,7 @@ async fn sprint_list(
 	_options: &[CommandDataOption],
 ) -> Result<()> {
 	let sprints = Sprint::get_all_current(app.clone()).await?;
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	let content = if sprints.is_empty() {
 		"No sprints are currently running.".to_string()
@@ -497,6 +507,7 @@ async fn sprint_summary(
 	let shortid =
 		get_integer(options, "sprint").ok_or_else(|| miette!("sprint is a required field"))?;
 	debug!(?shortid, "got shortid");
+	app.do_action(CommandAck::new(&interaction)).await?;
 
 	let sprint = Sprint::get_from_shortid(
 		app.clone(),
