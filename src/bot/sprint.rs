@@ -1,6 +1,6 @@
 #![allow(deprecated)] // chrono's .date()
 
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration as StdDuration};
 
 use chrono::{Duration, Utc};
 use futures_util::future::try_join_all;
@@ -483,7 +483,7 @@ async fn sprint_set_words(
 		.transpose()?
 		.unwrap_or(0);
 
-	app.do_action(ComponentAck::new(&interaction))
+	app.do_action(ComponentAck::ephemeral(&interaction))
 		.await
 		.log()
 		.ok();
@@ -499,8 +499,12 @@ async fn sprint_set_words(
 			.all_participants_have_ending_words(app.clone())
 			.await?
 		{
-			app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
-				.await?;
+			// Delay so that it hopefully doesn't inherit the ephemeralness
+			app.send_timer(Timer::new_after(
+				StdDuration::from_secs(1),
+				SprintSummary::new(app.clone(), &interaction, sprint).await?,
+			)?)
+			.await?;
 		}
 	}
 
