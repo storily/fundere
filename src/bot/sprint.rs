@@ -332,7 +332,7 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 		return Err(miette!("sprint has already ended"));
 	}
 
-	app.do_action(ComponentAck::new(&interaction))
+	app.do_action(ComponentAck::ephemeral(&interaction))
 		.await
 		.log()
 		.ok();
@@ -602,7 +602,7 @@ async fn save_words(
 
 async fn save_never(app: App, interaction: &Interaction, login_id: &str) -> Result<()> {
 	let login_id = Uuid::from_str(login_id).into_diagnostic()?;
-	app.do_action(ComponentAck::new(&interaction))
+	app.do_action(ComponentAck::ephemeral(&interaction))
 		.await
 		.log()
 		.ok();
