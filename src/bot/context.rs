@@ -34,7 +34,7 @@ use twilight_model::{
 use twilight_util::builder::InteractionResponseDataBuilder;
 
 use super::action::Action;
-use crate::{config::Config, db::sprint::Sprint, nominare::Nominare};
+use crate::{config::Config, db::sprint::Sprint, error_ext::ErrorExt, nominare::Nominare};
 
 #[derive(Clone, Debug)]
 #[repr(transparent)]
@@ -78,14 +78,14 @@ impl App {
 
 	#[tracing::instrument]
 	pub async fn send_response(&self, response: GenericResponse) -> Result<Message> {
-		let posted_response = if let Some(msg) = response.message {
+		let posted_response = if let Some(msg) = &response.message {
 			Some(match msg {
-				MessageForm::Discord(msg) => msg,
+				MessageForm::Discord(msg) => msg.clone(),
 				MessageForm::Db(msgid) => {
 					debug!(?msgid, "get message from discord");
 
 					self.client
-						.message(msgid.into(), msgid.into())
+						.message((*msgid).into(), (*msgid).into())
 						.await
 						.into_diagnostic()?
 						.model()
@@ -100,21 +100,60 @@ impl App {
 			None
 		};
 
+		debug!("try sending using interaction first");
+		if let Ok(message) = self
+			.send_using_interaction(posted_response, response.clone())
+			.await
+			.log()
+		{
+			return Ok(message);
+		}
+
+		debug!("fallback to posting directly to channel if we can");
+
+		if let Some(channel) = response.channel {
+			debug!("posting to channel");
+			response
+				.data
+				.incept_message(self.client.create_message(channel))?
+				.await
+				.into_diagnostic()
+				.wrap_err("message exec")?
+				.model()
+				.await
+				.into_diagnostic()
+				.wrap_err("message response")
+		} else {
+			error!("no channel to post to");
+			Err(miette!("cannot post response, possibly a bug?"))
+		}
+	}
+
+	#[inline]
+	async fn send_using_interaction(
+		&self,
+		posted_response: Option<Message>,
+		response: GenericResponse,
+	) -> Result<Message> {
 		match (posted_response, response.interaction, response.token) {
 			(None, None, _) | (None, _, None) => {
-				debug!("no response and no interaction, post to channel")
+				Err(miette!("no response and no interaction, post to channel"))
 			}
 			(Some(msg), _, _)
 				if SystemTime::now()
 					>= (UNIX_EPOCH
 						+ Duration::from_secs(msg.timestamp.as_secs().max(0) as u64 + 15 * 60)) =>
 			{
-				debug!("response already sent, but too old, post to channel instead")
+				Err(miette!(
+					"response already sent, but too old, post to channel instead"
+				))
 			}
-			(Some(_), _, None) => debug!("got a response but no interaction, post to channel"),
+			(Some(_), _, None) => Err(miette!(
+				"got a response but no interaction, post to channel"
+			)),
 			(Some(_), _, Some(token)) => {
 				debug!("response already sent, post followup");
-				return response
+				response
 					.data
 					.incept_followup(self.interaction_client().create_followup(&token))?
 					.await
@@ -123,7 +162,7 @@ impl App {
 					.model()
 					.await
 					.into_diagnostic()
-					.wrap_err("followup response");
+					.wrap_err("followup response")
 			}
 			(None, Some(id), Some(token)) => {
 				debug!("response not sent, post response");
@@ -143,28 +182,10 @@ impl App {
 				// wait for discord to settle
 				sleep(Duration::from_millis(100)).await;
 
-				return self
-					.get_response_message(&token)
+				self.get_response_message(&token)
 					.await?
-					.ok_or_else(|| miette!("no response message"));
+					.ok_or_else(|| miette!("no response message"))
 			}
-		}
-
-		if let Some(channel) = response.channel {
-			debug!("posting to channel");
-			response
-				.data
-				.incept_message(self.client.create_message(channel))?
-				.await
-				.into_diagnostic()
-				.wrap_err("message exec")?
-				.model()
-				.await
-				.into_diagnostic()
-				.wrap_err("message response")
-		} else {
-			error!("no channel to post to");
-			Err(miette!("cannot post response, possibly a bug?"))
 		}
 	}
 
