@@ -328,14 +328,20 @@ fn test_is_binary_round() {
 }
 
 fn is_incrementing(n: u64) -> bool {
-	if is_single_digit(n) {
+	if is_all_same_digit(n) {
 		return false;
 	}
 
 	let digs = digits(n);
 	let mut sort = digs.clone();
 	sort.sort();
-	sort == digs
+	if sort != digs {
+		// maybe use https://github.com/rust-lang/rust/issues/53485?
+		return false;
+	}
+
+	// UNWRAPs: has at least one digit
+	usize::from(sort.last().unwrap() - sort.first().unwrap()) == sort.len() - 1
 }
 #[test]
 fn test_is_incrementing() {
@@ -344,11 +350,13 @@ fn test_is_incrementing() {
 	assert!(is_incrementing(234));
 	assert!(is_incrementing(56789));
 	assert!(!is_incrementing(321));
+	assert!(!is_incrementing(5555));
+	assert!(!is_incrementing(5679));
 	assert!(!is_incrementing(8183901));
 }
 
 fn is_decrementing(n: u64) -> bool {
-	if is_single_digit(n) {
+	if is_all_same_digit(n) {
 		return false;
 	}
 
@@ -356,7 +364,12 @@ fn is_decrementing(n: u64) -> bool {
 	let mut sort = digs.clone();
 	sort.sort();
 	sort.reverse();
-	sort == digs
+	if sort != digs {
+		return false;
+	}
+
+	// UNWRAPs: has at least one digit
+	usize::from(sort.first().unwrap() - sort.last().unwrap()) == sort.len() - 1
 }
 #[test]
 fn test_is_decrementing() {
@@ -365,6 +378,8 @@ fn test_is_decrementing() {
 	assert!(is_decrementing(432));
 	assert!(is_decrementing(98765));
 	assert!(!is_decrementing(123));
+	assert!(!is_decrementing(5555));
+	assert!(!is_decrementing(5431));
 	assert!(!is_decrementing(8183901));
 }
 
