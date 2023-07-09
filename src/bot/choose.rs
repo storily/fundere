@@ -9,13 +9,15 @@ use twilight_model::application::{
 };
 use twilight_util::builder::command::{CommandBuilder, IntegerBuilder, StringBuilder};
 
-use crate::bot::{
-	action::CommandAck,
-	context::{GenericResponse, GenericResponseData},
-	utils::command::{get_integer, get_string},
+use crate::{
+	bot::{
+		action::CommandAck,
+		context::{GenericResponse, GenericResponseData},
+		utils::command::{get_integer, get_string},
+		App,
+	},
+	error_ext::ErrorExt,
 };
-
-use super::App;
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -52,7 +54,10 @@ pub async fn on_command(
 	let items_str =
 		get_string(&command_data.options, "items").ok_or(miette!("need at least one item"))?;
 	debug!(items=?items_str, ?count, "choose arguments");
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let or = Regex::new(r"(?i)\s+or\s+").unwrap();
 	let mut items: Vec<&str> = or.split(items_str).map(|i| i.trim()).collect();

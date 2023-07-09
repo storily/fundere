@@ -8,13 +8,15 @@ use twilight_model::application::{
 };
 use twilight_util::builder::command::{CommandBuilder, IntegerBuilder, StringBuilder};
 
-use crate::bot::{
-	action::CommandAck,
-	context::{GenericResponse, GenericResponseData},
-	utils::command::{get_integer, get_string},
+use crate::{
+	bot::{
+		action::CommandAck,
+		context::{GenericResponse, GenericResponseData},
+		utils::command::{get_integer, get_string},
+		App,
+	},
+	error_ext::ErrorExt,
 };
-
-use super::App;
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -106,7 +108,10 @@ pub async fn on_command(
 	.filter_map(|x| x.as_ref())
 	.join(" ");
 	debug!(?query, "nominare: query");
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let mut names = nominare.search(&query).await.into_diagnostic()?;
 	debug!(?query, ?names, "nominare: results");

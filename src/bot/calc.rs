@@ -6,12 +6,14 @@ use twilight_model::application::{
 };
 use twilight_util::builder::command::{BooleanBuilder, CommandBuilder, StringBuilder};
 
-use crate::bot::{
-	action::{CalcResult, CommandAck},
-	utils::command::{get_boolean, get_string},
+use crate::{
+	bot::{
+		action::{CalcResult, CommandAck},
+		utils::command::{get_boolean, get_string},
+		App,
+	},
+	error_ext::ErrorExt,
 };
-
-use super::App;
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -45,7 +47,9 @@ pub async fn on_command(
 	} else {
 		CommandAck::ephemeral(&interaction)
 	})
-	.await?;
+	.await
+	.log()
+	.ok();
 	debug!(?input, "calculating");
 
 	let mut context = fend_core::Context::new();

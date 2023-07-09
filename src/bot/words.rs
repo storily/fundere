@@ -19,12 +19,12 @@ use crate::{
 		action::CommandAck,
 		context::{GenericResponse, GenericResponseData},
 		utils::command::{get_integer, get_string},
+		App,
 	},
 	db::{member::Member, nanowrimo_login::NanowrimoLogin, project::Project},
+	error_ext::ErrorExt,
 	nano::project::Project as NanoProject,
 };
-
-use super::App;
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -98,7 +98,10 @@ pub async fn on_command(
 
 async fn show(app: App, interaction: &Interaction) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
@@ -134,7 +137,10 @@ async fn set_project(
 	} else {
 		input
 	};
-	app.do_action(CommandAck::ephemeral(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let member = Member::try_from(interaction)?;
 	let client = NanowrimoLogin::client_for_member_or_default(app.clone(), member).await?;
@@ -173,7 +179,10 @@ async fn override_goal(
 	let goal = get_integer(options, "words").ok_or_else(|| miette!("missing goal in words"))?;
 
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::ephemeral(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
@@ -230,7 +239,10 @@ async fn record_words(
 	debug!(?words, "words record: parsed input");
 
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::ephemeral(&interaction)).await?;
+	app.do_action(CommandAck::ephemeral(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let project = Project::get_for_member(app.clone(), member)
 		.await?

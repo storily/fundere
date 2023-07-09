@@ -20,9 +20,11 @@ use twilight_util::builder::{
 };
 use uuid::Uuid;
 
-use crate::db::error::Error;
-
-use super::{action::ComponentAck, App};
+use crate::{
+	bot::{action::ComponentAck, App},
+	db::error::Error,
+	error_ext::ErrorExt,
+};
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -88,7 +90,10 @@ async fn throw_error(
 }
 
 async fn ping_maintainer(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
-	app.do_action(ComponentAck::ephemeral(&interaction)).await?;
+	app.do_action(ComponentAck::ephemeral(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let maintainer = Id::new(match app.config.discord.maintainer_id {
 		Some(id) => id,

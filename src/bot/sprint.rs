@@ -42,6 +42,7 @@ use crate::{
 		project::Project,
 		sprint::{Sprint, SprintStatus},
 	},
+	error_ext::ErrorExt,
 };
 
 #[tracing::instrument]
@@ -277,7 +278,10 @@ async fn sprint_new(
 
 	let channel = Channel::try_from(interaction)?;
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let now = Utc::now().with_timezone(
 		&member
@@ -328,7 +332,10 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 		return Err(miette!("sprint has already ended"));
 	}
 
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	sprint.join(app.clone(), member).await?;
 
@@ -352,7 +359,10 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 		return Err(miette!("sprint has already ended"));
 	}
 
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	sprint.leave(app.clone(), member).await?;
 
@@ -392,7 +402,10 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 		return Err(miette!("sprint has already ended"));
 	}
 
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	sprint.cancel(app.clone()).await?;
 
@@ -470,7 +483,10 @@ async fn sprint_set_words(
 		.transpose()?
 		.unwrap_or(0);
 
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	sprint.set_words(app.clone(), member, words, column).await?;
 
@@ -497,7 +513,10 @@ async fn sprint_list(
 	_options: &[CommandDataOption],
 ) -> Result<()> {
 	let sprints = Sprint::get_all_current(app.clone()).await?;
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let content = if sprints.is_empty() {
 		"No sprints are currently running.".to_string()
@@ -530,7 +549,10 @@ async fn sprint_summary(
 	let shortid =
 		get_integer(options, "sprint").ok_or_else(|| miette!("sprint is a required field"))?;
 	debug!(?shortid, "got shortid");
-	app.do_action(CommandAck::new(&interaction)).await?;
+	app.do_action(CommandAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let sprint = Sprint::get_from_shortid(
 		app.clone(),
@@ -555,7 +577,10 @@ async fn save_words(
 	let member = Member::try_from(interaction)?;
 	let sprint_id = Uuid::from_str(sprint_id).into_diagnostic()?;
 	let project_id = Uuid::from_str(project_id).into_diagnostic()?;
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let sprint = Sprint::get(app.clone(), sprint_id)
 		.await
@@ -577,7 +602,10 @@ async fn save_words(
 
 async fn save_never(app: App, interaction: &Interaction, login_id: &str) -> Result<()> {
 	let login_id = Uuid::from_str(login_id).into_diagnostic()?;
-	app.do_action(ComponentAck::new(&interaction)).await?;
+	app.do_action(ComponentAck::new(&interaction))
+		.await
+		.log()
+		.ok();
 
 	let Some(mut login) = NanowrimoLogin::get(app.clone(), login_id)
 		.await
