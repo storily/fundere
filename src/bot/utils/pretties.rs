@@ -9,6 +9,7 @@ pub enum Effect {
 	Complete,
 	Palindrome,
 	AllSameDigit,
+	ThreeRepeatedDigits,
 	Sandwich,
 	BracketingPair,
 	TwoPairs,
@@ -34,6 +35,8 @@ impl Effect {
 
 		if is_all_same_digit(n) {
 			all.push(Self::AllSameDigit);
+		} else if has_three_repeated_digits(n) {
+			all.push(Self::ThreeRepeatedDigits);
 		}
 		if is_sandwich(n) {
 			all.push(Self::Sandwich);
@@ -123,6 +126,7 @@ impl fmt::Display for Effect {
 				Self::Complete => '🎆',
 				Self::Palindrome => '✨',
 				Self::AllSameDigit => '🌉',
+				Self::ThreeRepeatingDigits => '🍁',
 				Self::Sandwich => '🥪',
 				Self::TwoPairs => '👀',
 				Self::BracketingPair => '💞',
@@ -233,6 +237,37 @@ fn test_is_all_same_digit() {
 	assert!(is_all_same_digit(333));
 	assert!(!is_all_same_digit(82828));
 	assert!(!is_all_same_digit(1239));
+}
+
+fn has_three_repeated_digits(n: u64) -> bool {
+	let mut current_digit = 0;
+	let mut how_many_seen = 0;
+	for d in digits(n) {
+		if current_digit == d {
+			how_many_seen += 1;
+		} else {
+			current_digit = d;
+			how_many_seen = 1;
+		}
+
+		if how_many_seen >= 3 {
+			return true;
+		}
+	}
+
+	false
+}
+#[test]
+fn test_has_three_repeated_digits() {
+	assert!(!has_three_repeated_digits(0));
+	assert!(!has_three_repeated_digits(7));
+	assert!(has_three_repeated_digits(333));
+	assert!(!has_three_repeated_digits(82828));
+	assert!(!has_three_repeated_digits(1239));
+	assert!(has_three_repeated_digits(1666));
+	assert!(has_three_repeated_digits(7773));
+	assert!(has_three_repeated_digits(91118));
+	assert!(!has_three_repeated_digits(9121318));
 }
 
 macro_rules! is_regex_match {
