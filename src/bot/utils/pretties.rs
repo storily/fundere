@@ -126,7 +126,7 @@ impl fmt::Display for Effect {
 				Self::Complete => '🎆',
 				Self::Palindrome => '✨',
 				Self::AllSameDigit => '🌉',
-				Self::ThreeRepeatingDigits => '🍁',
+				Self::ThreeRepeatedDigits => '🍁',
 				Self::Sandwich => '🥪',
 				Self::TwoPairs => '👀',
 				Self::BracketingPair => '💞',
