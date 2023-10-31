@@ -28,6 +28,9 @@ pub enum Effect {
 impl Effect {
 	pub fn all_from(n: u64) -> Vec<Self> {
 		let mut all = Vec::new();
+		if n == 0 {
+			return all;
+		}
 
 		if is_all_same_digit(n) {
 			all.push(Self::AllSameDigit);
