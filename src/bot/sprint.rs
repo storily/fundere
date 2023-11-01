@@ -613,9 +613,10 @@ async fn save_never(app: App, interaction: &Interaction, login_id: &str) -> Resu
 
 	let Some(mut login) = NanowrimoLogin::get(app.clone(), login_id)
 		.await
-		.wrap_err("login not found")? else{
-			return Ok(());
-		};
+		.wrap_err("login not found")?
+	else {
+		return Ok(());
+	};
 
 	login.ask_me(app.clone(), false).await?;
 

@@ -70,11 +70,11 @@ pub async fn on_command(
 	let single = items.len() == 1;
 
 	if let Some(write) = items.iter().find(|i| i.eq_ignore_ascii_case("write")) {
-		items.push(write.clone());
+		items.push(write);
 	}
 
 	if let Some(sprint) = items.iter().find(|i| i.eq_ignore_ascii_case("sprint")) {
-		items.push(sprint.clone());
+		items.push(sprint);
 	}
 
 	if single {

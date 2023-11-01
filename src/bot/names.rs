@@ -84,16 +84,17 @@ pub async fn on_command(
 	command_data: &CommandData,
 ) -> Result<()> {
 	let Some(ref nominare) = app.nominare else {
-		return app.send_response(GenericResponse::from_interaction(
-			interaction,
-			GenericResponseData {
-				content: Some("Sorry! /names is not activated for this bot".to_string()),
-				ephemeral: true,
-				..Default::default()
-			},
-		))
-		.await
-		.map(drop);
+		return app
+			.send_response(GenericResponse::from_interaction(
+				interaction,
+				GenericResponseData {
+					content: Some("Sorry! /names is not activated for this bot".to_string()),
+					ephemeral: true,
+					..Default::default()
+				},
+			))
+			.await
+			.map(drop);
 	};
 
 	let query = [
