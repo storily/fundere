@@ -109,10 +109,7 @@ pub async fn on_command(
 	.filter_map(|x| x.as_ref())
 	.join(" ");
 	debug!(?query, "nominare: query");
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let mut names = nominare.search(&query).await.into_diagnostic()?;
 	debug!(?query, ?names, "nominare: results");

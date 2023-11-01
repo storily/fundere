@@ -54,7 +54,7 @@ impl Project {
 			.into_iter()
 			.filter_map(|obj| match obj {
 				Object::ProjectChallenge(ProjectChallengeObject { id, attributes, .. }) => {
-					Some(Goal::new(id, timezone.clone(), attributes))
+					Some(Goal::new(id, timezone, attributes))
 				}
 				_ => None,
 			})

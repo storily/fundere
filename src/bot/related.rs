@@ -42,14 +42,11 @@ pub async fn on_command(
 	command_data: &CommandData,
 ) -> Result<()> {
 	let word = get_string(&command_data.options, "word").ok_or(miette!("needs a word"))?;
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 	debug!(?word, "related arguments");
 
 	let mut url = Url::parse("https://relatedwords.org/api/related").unwrap();
-	url.query_pairs_mut().append_pair("term", &word);
+	url.query_pairs_mut().append_pair("term", word);
 
 	let terms: Vec<Related> = reqwest::get(url)
 		.await

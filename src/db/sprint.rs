@@ -319,7 +319,7 @@ impl Sprint {
 		Duration::seconds(
 			(self.duration.days as i64 + self.duration.months as i64 * 31)
 				* 24 * 60 * 60 * 1_000_000
-				+ (self.duration.microseconds as i64) / (1_000_000),
+				+ self.duration.microseconds / (1_000_000),
 		)
 	}
 

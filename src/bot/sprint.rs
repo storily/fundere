@@ -123,27 +123,27 @@ pub async fn on_component(
 	debug!(?subids, ?component_data, "sprint component action");
 
 	match subids {
-		["join", uuid] => sprint_join(app.clone(), interaction, *uuid)
+		["join", uuid] => sprint_join(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: join")?,
-		["leave", uuid] => sprint_leave(app.clone(), interaction, *uuid)
+		["leave", uuid] => sprint_leave(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: leave")?,
-		["cancel", uuid] => sprint_cancel(app.clone(), interaction, *uuid)
+		["cancel", uuid] => sprint_cancel(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: cancel")?,
-		["start-words", uuid] => sprint_words_start(app.clone(), interaction, *uuid)
+		["start-words", uuid] => sprint_words_start(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: words modal: start")?,
-		["end-words", uuid] => sprint_words_end(app.clone(), interaction, *uuid)
+		["end-words", uuid] => sprint_words_end(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: words modal: end")?,
 		["save-words", sprint_id, project_id] => {
-			save_words(app.clone(), interaction, *sprint_id, *project_id)
+			save_words(app.clone(), interaction, sprint_id, project_id)
 				.await
 				.wrap_err("action: save words")?
 		}
-		["save-never", nano_login_id] => save_never(app.clone(), interaction, *nano_login_id)
+		["save-never", nano_login_id] => save_never(app.clone(), interaction, nano_login_id)
 			.await
 			.wrap_err("action: save words: don't ask again")?,
 		id => warn!(?id, "unhandled sprint component action"),
@@ -164,14 +164,14 @@ pub async fn on_modal(
 		["set-words", "start", uuid] => sprint_set_words(
 			app.clone(),
 			interaction,
-			*uuid,
+			uuid,
 			component_data,
 			"words_start",
 		)
 		.await
 		.wrap_err("action: words modal: starting")?,
 		["set-words", "end", uuid] => {
-			sprint_set_words(app.clone(), interaction, *uuid, component_data, "words_end")
+			sprint_set_words(app.clone(), interaction, uuid, component_data, "words_end")
 				.await
 				.wrap_err("action: words modal: ending")?
 		}
@@ -278,10 +278,7 @@ async fn sprint_new(
 
 	let channel = Channel::try_from(interaction)?;
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let now = Utc::now().with_timezone(
 		&member
@@ -312,7 +309,7 @@ async fn sprint_new(
 		Sprint::create(app.clone(), starting, duration, &interaction.token, member).await?;
 
 	app.do_action(
-		SprintAnnounce::new(app.clone(), &interaction, sprint)
+		SprintAnnounce::new(app.clone(), interaction, sprint)
 			.await
 			.wrap_err("rendering announce")?,
 	)
@@ -332,14 +329,14 @@ async fn sprint_join(app: App, interaction: &Interaction, uuid: &str) -> Result<
 		return Err(miette!("sprint has already ended"));
 	}
 
-	app.do_action(ComponentAck::ephemeral(&interaction))
+	app.do_action(ComponentAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
 
 	sprint.join(app.clone(), member).await?;
 
-	app.do_action(SprintJoined::new(&interaction, &sprint)?)
+	app.do_action(SprintJoined::new(interaction, &sprint)?)
 		.await?;
 
 	app.do_action(SprintUpdate::new(&sprint)).await?;
@@ -359,14 +356,14 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 		return Err(miette!("sprint has already ended"));
 	}
 
-	app.do_action(ComponentAck::new(&interaction))
+	app.do_action(ComponentAck::new(interaction))
 		.await
 		.log()
 		.ok();
 
 	sprint.leave(app.clone(), member).await?;
 
-	app.do_action(SprintLeft::new(&interaction, &sprint)?)
+	app.do_action(SprintLeft::new(interaction, &sprint)?)
 		.await?;
 
 	if sprint.participants(app.clone()).await?.is_empty() {
@@ -377,7 +374,7 @@ async fn sprint_leave(app: App, interaction: &Interaction, uuid: &str) -> Result
 			.ok_or(miette!("can only leave sprint from a guild"))?;
 
 		sprint.cancel(app.clone()).await?;
-		app.do_action(SprintCancelled::new(&interaction, &sprint, user)?)
+		app.do_action(SprintCancelled::new(interaction, &sprint, user)?)
 			.await?;
 	} else {
 		app.do_action(SprintUpdate::new(&sprint)).await?;
@@ -402,14 +399,14 @@ async fn sprint_cancel(app: App, interaction: &Interaction, uuid: &str) -> Resul
 		return Err(miette!("sprint has already ended"));
 	}
 
-	app.do_action(ComponentAck::new(&interaction))
+	app.do_action(ComponentAck::new(interaction))
 		.await
 		.log()
 		.ok();
 
 	sprint.cancel(app.clone()).await?;
 
-	app.do_action(SprintCancelled::new(&interaction, &sprint, user)?)
+	app.do_action(SprintCancelled::new(interaction, &sprint, user)?)
 		.await?;
 
 	Ok(())
@@ -426,7 +423,7 @@ async fn sprint_words_start(app: App, interaction: &Interaction, uuid: &str) -> 
 		return Err(miette!("sprint was cancelled"));
 	}
 
-	app.do_action(SprintWordsStart::new(&interaction, sprint.id, member))
+	app.do_action(SprintWordsStart::new(interaction, sprint.id, member))
 		.await?;
 
 	Ok(())
@@ -443,7 +440,7 @@ async fn sprint_words_end(app: App, interaction: &Interaction, uuid: &str) -> Re
 		return Err(miette!("sprint was cancelled"));
 	}
 
-	app.do_action(SprintWordsEnd::new(&interaction, sprint.id, member))
+	app.do_action(SprintWordsEnd::new(interaction, sprint.id, member))
 		.await?;
 
 	Ok(())
@@ -483,7 +480,7 @@ async fn sprint_set_words(
 		.transpose()?
 		.unwrap_or(0);
 
-	app.do_action(ComponentAck::ephemeral(&interaction))
+	app.do_action(ComponentAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
@@ -491,7 +488,7 @@ async fn sprint_set_words(
 	sprint.set_words(app.clone(), member, words, column).await?;
 
 	if column == "words_end" {
-		if let Some(act) = SprintSaveWords::new(app.clone(), &interaction, &sprint, member).await? {
+		if let Some(act) = SprintSaveWords::new(app.clone(), interaction, &sprint, member).await? {
 			app.do_action(act).await?;
 		}
 
@@ -502,7 +499,7 @@ async fn sprint_set_words(
 			// Delay so that it hopefully doesn't inherit the ephemeralness
 			app.send_timer(Timer::new_after(
 				StdDuration::from_secs(1),
-				SprintSummary::new(app.clone(), &interaction, sprint).await?,
+				SprintSummary::new(app.clone(), interaction, sprint).await?,
 			)?)
 			.await?;
 		}
@@ -517,10 +514,7 @@ async fn sprint_list(
 	_options: &[CommandDataOption],
 ) -> Result<()> {
 	let sprints = Sprint::get_all_current(app.clone()).await?;
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let content = if sprints.is_empty() {
 		"No sprints are currently running.".to_string()
@@ -553,10 +547,7 @@ async fn sprint_summary(
 	let shortid =
 		get_integer(options, "sprint").ok_or_else(|| miette!("sprint is a required field"))?;
 	debug!(?shortid, "got shortid");
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let sprint = Sprint::get_from_shortid(
 		app.clone(),
@@ -568,7 +559,7 @@ async fn sprint_summary(
 	.await
 	.wrap_err("sprint not found")?;
 
-	app.do_action(SprintSummary::new(app.clone(), &interaction, sprint).await?)
+	app.do_action(SprintSummary::new(app.clone(), interaction, sprint).await?)
 		.await
 }
 
@@ -581,7 +572,7 @@ async fn save_words(
 	let member = Member::try_from(interaction)?;
 	let sprint_id = Uuid::from_str(sprint_id).into_diagnostic()?;
 	let project_id = Uuid::from_str(project_id).into_diagnostic()?;
-	app.do_action(ComponentAck::new(&interaction))
+	app.do_action(ComponentAck::new(interaction))
 		.await
 		.log()
 		.ok();
@@ -606,7 +597,7 @@ async fn save_words(
 
 async fn save_never(app: App, interaction: &Interaction, login_id: &str) -> Result<()> {
 	let login_id = Uuid::from_str(login_id).into_diagnostic()?;
-	app.do_action(ComponentAck::ephemeral(&interaction))
+	app.do_action(ComponentAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();

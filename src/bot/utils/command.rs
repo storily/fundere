@@ -25,7 +25,7 @@ pub fn get_string<'o>(options: &'o [CommandDataOption], name: &str) -> Option<&'
 	})
 }
 
-pub fn get_integer<'o>(options: &'o [CommandDataOption], name: &str) -> Option<i64> {
+pub fn get_integer(options: &[CommandDataOption], name: &str) -> Option<i64> {
 	get_option(options, name).and_then(|val| {
 		if let CommandOptionValue::Integer(i) = val {
 			Some(*i)
@@ -35,7 +35,7 @@ pub fn get_integer<'o>(options: &'o [CommandDataOption], name: &str) -> Option<i
 	})
 }
 
-pub fn get_boolean<'o>(options: &'o [CommandDataOption], name: &str) -> Option<bool> {
+pub fn get_boolean(options: &[CommandDataOption], name: &str) -> Option<bool> {
 	get_option(options, name).and_then(|val| {
 		if let CommandOptionValue::Boolean(b) = val {
 			Some(*b)

@@ -153,7 +153,7 @@ impl NanowrimoLogin {
 
 	#[tracing::instrument]
 	pub async fn client(&self) -> Result<NanoClient> {
-		NanoClient::new_user(&self.username, &self.password.as_sensitive_str())
+		NanoClient::new_user(&self.username, self.password.as_sensitive_str())
 			.await
 			.into_diagnostic()
 	}

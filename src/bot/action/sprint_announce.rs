@@ -62,7 +62,7 @@ impl SprintAnnounce {
 			app.send_timer(Timer::new_after(
 				// UNWRAP: warning_in uses saturating_sub, will never be negative
 				warning_in.to_std().unwrap(),
-				SprintStartWarning::new(&sprint),
+				SprintStartWarning::new(sprint),
 			)?)
 			.await?;
 		}
@@ -71,7 +71,7 @@ impl SprintAnnounce {
 		debug!(?starting_in, "set up sprint start timer");
 		app.send_timer(Timer::new_after(
 			starting_in.positive_or(Duration::zero()).to_std().unwrap(),
-			SprintStart::new(&sprint),
+			SprintStart::new(sprint),
 		)?)
 		.await?;
 

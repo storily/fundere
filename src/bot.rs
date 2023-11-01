@@ -160,31 +160,31 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 			handle_interaction_error(app.clone(), interaction, async {
 				info!(command=?data.name, "handle slash command");
 				match data.name.as_str() {
-					"calc" => calc::on_command(app.clone(), interaction, &data)
+					"calc" => calc::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: calc"),
-					"choose" => choose::on_command(app.clone(), interaction, &data)
+					"choose" => choose::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: choose"),
-					"debug" => debug::on_command(app.clone(), interaction, &data)
+					"debug" => debug::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: debug"),
-					"names" => names::on_command(app.clone(), interaction, &data)
+					"names" => names::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: names"),
-					"nanowrimo" => nanowrimo::on_command(app.clone(), interaction, &data)
+					"nanowrimo" => nanowrimo::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: nanowrimo"),
-					"random" => random::on_command(app.clone(), interaction, &data)
+					"random" => random::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: random"),
-					"related" => related::on_command(app.clone(), interaction, &data)
+					"related" => related::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: related"),
-					"sprint" => sprint::on_command(app.clone(), interaction, &data)
+					"sprint" => sprint::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: sprint"),
-					"words" => words::on_command(app.clone(), interaction, &data)
+					"words" => words::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: words"),
 					cmd => {
@@ -201,17 +201,17 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 				info!(?subids, "handle component message");
 				match subids.first() {
 					Some(&"sprint") => {
-						sprint::on_component(app.clone(), interaction, &subids[1..], &data)
+						sprint::on_component(app.clone(), interaction, &subids[1..], data)
 							.await
 							.wrap_err("component: sprint")
 					}
 					Some(&"debug") => {
-						debug::on_component(app.clone(), interaction, &subids[1..], &data)
+						debug::on_component(app.clone(), interaction, &subids[1..], data)
 							.await
 							.wrap_err("component: debug")
 					}
 					Some(&"nanowrimo") => {
-						nanowrimo::on_component(app.clone(), interaction, &subids[1..], &data)
+						nanowrimo::on_component(app.clone(), interaction, &subids[1..], data)
 							.await
 							.wrap_err("component: nanowrimo")
 					}
@@ -230,12 +230,12 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 				info!(?subids, "handle modal submit");
 				match subids.first() {
 					Some(&"sprint") => {
-						sprint::on_modal(app.clone(), interaction, &subids[1..], &data)
+						sprint::on_modal(app.clone(), interaction, &subids[1..], data)
 							.await
 							.wrap_err("modal: sprint")
 					}
 					Some(&"nanowrimo") => {
-						nanowrimo::on_modal(app.clone(), interaction, &subids[1..], &data)
+						nanowrimo::on_modal(app.clone(), interaction, &subids[1..], data)
 							.await
 							.wrap_err("modal: nanowrimo")
 					}

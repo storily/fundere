@@ -43,9 +43,9 @@ pub async fn on_command(
 	let public = get_boolean(&command_data.options, "public").unwrap_or(false);
 	let input = get_string(&command_data.options, "input").ok_or(miette!("input is required"))?;
 	app.do_action(if public {
-		CommandAck::new(&interaction)
+		CommandAck::new(interaction)
 	} else {
-		CommandAck::ephemeral(&interaction)
+		CommandAck::ephemeral(interaction)
 	})
 	.await
 	.log()

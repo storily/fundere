@@ -54,10 +54,7 @@ pub async fn on_command(
 	let items_str =
 		get_string(&command_data.options, "items").ok_or(miette!("need at least one item"))?;
 	debug!(items=?items_str, ?count, "choose arguments");
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let or = Regex::new(r"(?i)\s+or\s+").unwrap();
 	let mut items: Vec<&str> = or.split(items_str).map(|i| i.trim()).collect();
@@ -88,7 +85,6 @@ pub async fn on_command(
 	debug!(items=?items, ?count, "choosing");
 	let result = items
 		.choose_multiple(&mut rand::thread_rng(), count as _)
-		.into_iter()
 		.map(|item| format!("**{item}**"))
 		.join(", ");
 

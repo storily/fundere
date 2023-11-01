@@ -351,13 +351,13 @@ impl GenericResponseData {
 			ic_response = ic_response.flags(MessageFlags::EPHEMERAL);
 		}
 		if !self.embeds.is_empty() {
-			ic_response = ic_response.embeds(self.embeds.into_iter());
+			ic_response = ic_response.embeds(self.embeds);
 		}
 		if !self.components.is_empty() {
-			ic_response = ic_response.components(self.components.into_iter());
+			ic_response = ic_response.components(self.components);
 		}
 		if !self.attachments.is_empty() {
-			ic_response = ic_response.attachments(self.attachments.into_iter());
+			ic_response = ic_response.attachments(self.attachments);
 		}
 		ic_response.build()
 	}
@@ -381,7 +381,7 @@ impl Timer {
 		Instant::now()
 			.checked_add(duration)
 			.ok_or_else(|| miette!("cannot schedule that far into the future"))
-			.map(|time| Self::new_at(time.into(), payload))
+			.map(|time| Self::new_at(time, payload))
 	}
 
 	pub fn to_sleep(&self) -> Sleep {

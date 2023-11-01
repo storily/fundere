@@ -98,10 +98,7 @@ pub async fn on_command(
 
 async fn show(app: App, interaction: &Interaction) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
@@ -137,7 +134,7 @@ async fn set_project(
 	} else {
 		input
 	};
-	app.do_action(CommandAck::ephemeral(&interaction))
+	app.do_action(CommandAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
@@ -179,7 +176,7 @@ async fn override_goal(
 	let goal = get_integer(options, "words").ok_or_else(|| miette!("missing goal in words"))?;
 
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::ephemeral(&interaction))
+	app.do_action(CommandAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
@@ -196,7 +193,7 @@ async fn override_goal(
 	} else {
 		project.unset_goal(app.clone()).await?;
 		debug!(?project.id, "unset custom goal");
-		format!("Your goal has been reverted to the one from the nano website (if any).",)
+		"Your goal has been reverted to the one from the nano website (if any).".to_string()
 	};
 
 	app.send_response(GenericResponse::from_interaction(
@@ -228,18 +225,18 @@ async fn record_words(
 		.and_then(|input| {
 			debug!(?input, "words record: raw input");
 			if input.starts_with('+') {
-				i64::from_str(input.trim_start_matches('+')).map(|n| SaveWords::Relative(n))
+				i64::from_str(input.trim_start_matches('+')).map(SaveWords::Relative)
 			} else if input.starts_with('-') {
 				i64::from_str(input.trim_start_matches('-')).map(|n| SaveWords::Relative(-n))
 			} else {
-				u64::from_str(input).map(|n| SaveWords::Absolute(n))
+				u64::from_str(input).map(SaveWords::Absolute)
 			}
 			.into_diagnostic()
 		})?;
 	debug!(?words, "words record: parsed input");
 
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::ephemeral(&interaction))
+	app.do_action(CommandAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
@@ -283,7 +280,7 @@ pub async fn save_words(
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
-			content: Some(format!("Updated your word count on nanowrimo.org")),
+			content: Some("Updated your word count on nanowrimo.org".to_string()),
 			ephemeral: true,
 			..Default::default()
 		},

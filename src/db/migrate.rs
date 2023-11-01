@@ -34,7 +34,7 @@ pub async fn migrate(db: &mut Client) -> Result<()> {
 		MIGRATIONS
 			.iter()
 			.enumerate()
-			.find_map(|(n, (name, _))| if &&last == name { Some(n + 1) } else { None })
+			.find_map(|(n, (name, _))| if &last == name { Some(n + 1) } else { None })
 			.ok_or_else(|| {
 				miette!("last migration applied is not in available set, database in invalid state")
 			})?
@@ -44,7 +44,7 @@ pub async fn migrate(db: &mut Client) -> Result<()> {
 
 	for (name, migration) in &MIGRATIONS[first_todo..] {
 		info!(?name, "applying migration");
-		apply_migration(db, *name, *migration)
+		apply_migration(db, name, migration)
 			.await
 			.wrap_err_with(|| format!("migrating {name}"))?;
 	}

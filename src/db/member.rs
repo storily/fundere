@@ -42,7 +42,7 @@ impl Member {
 
 	pub async fn name(self, app: App) -> Result<String> {
 		let member = self.to_member(app).await?;
-		Ok(member.nick.unwrap_or_else(|| member.user.name))
+		Ok(member.nick.unwrap_or(member.user.name))
 	}
 
 	pub async fn timezone(self, app: App) -> Result<Option<Tz>> {

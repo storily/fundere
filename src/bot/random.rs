@@ -188,10 +188,7 @@ async fn number(app: App, interaction: &Interaction, options: &[CommandDataOptio
 	let count = get_integer(options, "count").unwrap_or(1);
 	let min = get_integer(options, "min").unwrap_or(0);
 	let max = get_integer(options, "max").unwrap_or(i64::MAX);
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let result = (0..count)
 		.map(|_| rand::thread_rng().gen_range(min..=max))
@@ -212,11 +209,8 @@ async fn number(app: App, interaction: &Interaction, options: &[CommandDataOptio
 async fn suit(app: App, interaction: &Interaction, options: &[CommandDataOption]) -> Result<()> {
 	let count = get_integer(options, "count").unwrap_or(1);
 	let variant = get_string(options, "variant").unwrap_or("all");
-	let variant = cards::SuitVariant::from_str(&variant)?;
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	let variant = cards::SuitVariant::from_str(variant)?;
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let result = (0..count)
 		.map(|_| variant.random())
@@ -237,11 +231,8 @@ async fn suit(app: App, interaction: &Interaction, options: &[CommandDataOption]
 async fn value(app: App, interaction: &Interaction, options: &[CommandDataOption]) -> Result<()> {
 	let count = get_integer(options, "count").unwrap_or(1);
 	let variant = get_string(options, "variant").unwrap_or("all");
-	let variant = cards::ValueVariant::from_str(&variant)?;
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	let variant = cards::ValueVariant::from_str(variant)?;
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let result = (0..count)
 		.map(|_| variant.random())
@@ -262,11 +253,8 @@ async fn value(app: App, interaction: &Interaction, options: &[CommandDataOption
 async fn card(app: App, interaction: &Interaction, options: &[CommandDataOption]) -> Result<()> {
 	let count = get_integer(options, "count").unwrap_or(1);
 	let variant = get_string(options, "variant").unwrap_or("all");
-	let variant = cards::DeckVariant::from_str(&variant)?;
-	app.do_action(CommandAck::new(&interaction))
-		.await
-		.log()
-		.ok();
+	let variant = cards::DeckVariant::from_str(variant)?;
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
 	let result = variant
 		.hand(count as _)

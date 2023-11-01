@@ -351,7 +351,7 @@ impl SuitVariant {
 			SuitVariant::Mahjong => vec![&SUIT_MAHJONG[..]],
 		}
 		.into_iter()
-		.flat_map(|s| s.into_iter())
+		.flat_map(|s| s.iter())
 		.collect::<HashSet<&&str>>();
 
 		set.into_iter()
@@ -464,7 +464,7 @@ impl ValueVariant {
 			],
 		}
 		.into_iter()
-		.flat_map(|s| s.into_iter())
+		.flat_map(|s| s.iter())
 		.collect()
 	}
 
@@ -561,7 +561,7 @@ impl DeckVariant {
 					&SUIT_ENGLISH,
 					vec![&PIPS_ACE_TEN[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 			],
 			DeckVariant::French => vec![
@@ -570,7 +570,7 @@ impl DeckVariant {
 					&SUIT_ENGLISH,
 					vec![&PIPS_ACE_TEN[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 			],
 			DeckVariant::German => vec![
@@ -579,7 +579,7 @@ impl DeckVariant {
 					&SUIT_GERMAN,
 					vec![&PIPS_ACE_TEN[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 			],
 			DeckVariant::Italian => vec![
@@ -588,7 +588,7 @@ impl DeckVariant {
 					&SUIT_ITALIAN,
 					vec![&PIPS_ACE_TEN[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 			],
 			DeckVariant::Spanish => vec![
@@ -597,7 +597,7 @@ impl DeckVariant {
 					&SUIT_SPANISH,
 					vec![&PIPS_ACE_TEN[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 			],
 			DeckVariant::Swiss => vec![
@@ -606,7 +606,7 @@ impl DeckVariant {
 					&SUIT_SWISS,
 					vec![&PIPS_ACE_TEN[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 			],
 			DeckVariant::Euchre => vec![
@@ -615,13 +615,13 @@ impl DeckVariant {
 					&[SUIT_FRENCH[1], SUIT_FRENCH[2]], // red
 					vec![&PIPS_ACE_THIRTEEN[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 				build_suits(
 					&[SUIT_FRENCH[0], SUIT_FRENCH[3]], // black
 					vec![&PIPS_ACE_TWELVE[..], &FACES_STANDARD[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 			],
 			DeckVariant::Tarot => vec![
@@ -629,7 +629,7 @@ impl DeckVariant {
 					&SUIT_TAROT,
 					vec![&PIPS_ONE_TEN[..], &FACES_TAROT[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 				ASPECTS_ARCANA.iter().map(|s| s.to_string()).collect(),
 			],
@@ -638,7 +638,7 @@ impl DeckVariant {
 					&SUIT_NOUVEAU,
 					vec![&PIPS_ONE_TEN[..], &FACES_NOUVEAU[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 				ASPECTS_NOUVEAU.iter().map(|s| s.to_string()).collect(),
 			],
@@ -647,7 +647,7 @@ impl DeckVariant {
 					&SUIT_ITALIAN,
 					vec![&PIPS_ONE_TEN[..], &FACES_SICILIANO[..]]
 						.into_iter()
-						.flat_map(|s| s.into_iter()),
+						.flat_map(|s| s.iter()),
 				),
 				ASPECTS_SICILIANO.iter().map(|s| s.to_string()).collect(),
 			],
@@ -659,7 +659,7 @@ impl DeckVariant {
 						&FACES_BOLOGNESE[..],
 					]
 					.into_iter()
-					.flat_map(|s| s.into_iter()),
+					.flat_map(|s| s.iter()),
 				),
 				ASPECTS_BOLOGNESE.iter().map(|s| s.to_string()).collect(),
 			],
@@ -676,7 +676,7 @@ impl DeckVariant {
 						],
 					]
 					.into_iter()
-					.flat_map(|s| s.into_iter()),
+					.flat_map(|s| s.iter()),
 				),
 				build_suits(
 					&[SUIT_ITALIAN[2], SUIT_ITALIAN[3]], // swords and clubs
@@ -690,7 +690,7 @@ impl DeckVariant {
 						],
 					]
 					.into_iter()
-					.flat_map(|s| s.into_iter()),
+					.flat_map(|s| s.iter()),
 				),
 				ASPECTS_MINCHIATE.iter().map(|s| s.to_string()).collect(),
 			],
@@ -707,7 +707,7 @@ impl DeckVariant {
 						],
 					]
 					.into_iter()
-					.flat_map(|s| s.into_iter()),
+					.flat_map(|s| s.iter()),
 				),
 				ASPECTS_SWISS.iter().map(|s| s.to_string()).collect(),
 			],
@@ -715,13 +715,13 @@ impl DeckVariant {
 				&SUIT_GANJIFA,
 				vec![&PIPS_ONE_TEN[..], &FACES_GANJIFA[..]]
 					.into_iter()
-					.flat_map(|s| s.into_iter()),
+					.flat_map(|s| s.iter()),
 			)],
 			DeckVariant::Moghul => vec![build_suits(
 				&SUIT_MOGHUL,
 				vec![&PIPS_ONE_TEN[..], &FACES_GANJIFA[..]]
 					.into_iter()
-					.flat_map(|s| s.into_iter()),
+					.flat_map(|s| s.iter()),
 			)],
 			DeckVariant::Hanafuda => vec![vec![
 				// january
@@ -801,9 +801,7 @@ impl DeckVariant {
 			DeckVariant::Mahjong => vec![
 				build_suits(
 					&SUIT_MAHJONG,
-					vec![&PIPS_ONE_NINE[..]]
-						.into_iter()
-						.flat_map(|s| s.into_iter()),
+					vec![&PIPS_ONE_NINE[..]].into_iter().flat_map(|s| s.iter()),
 				), // x4
 				MAHJONG_WINDS.iter().map(|s| format!("{s} wind")).collect(), // x4
 				MAHJONG_DRAGONS
@@ -831,7 +829,7 @@ where
 	's: 'v,
 {
 	values
-		.into_iter()
+		.iter()
 		.map(move |value| format!("{} of {}", value, suit))
 		.collect()
 }
@@ -846,6 +844,6 @@ where
 	let values: Vec<String> = values.into_iter().map(|v| v.to_string()).collect();
 	suits
 		.iter()
-		.flat_map(|suit| build_suit(*suit, &values))
+		.flat_map(|suit| build_suit(suit, &values))
 		.collect()
 }

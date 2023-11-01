@@ -85,7 +85,7 @@ pub async fn on_component(
 	debug!(?subids, ?component_data, "nanowrimo component action");
 
 	match subids {
-		["login", uuid] => login_modal(app.clone(), interaction, *uuid)
+		["login", uuid] => login_modal(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: login")?,
 		id => warn!(?id, "unhandled nanowrimo component action"),
@@ -103,7 +103,7 @@ pub async fn on_modal(
 	debug!(?subids, ?component_data, "nanowrimo modal action");
 
 	match subids {
-		["login", uuid] => login(app.clone(), interaction, *uuid, component_data)
+		["login", uuid] => login(app.clone(), interaction, uuid, component_data)
 			.await
 			.wrap_err("action: nanowrimo modal: login")?,
 		id => warn!(?id, "unhandled nanowrimo modal action"),
@@ -114,7 +114,7 @@ pub async fn on_modal(
 
 async fn status(app: App, interaction: &Interaction, _options: &[CommandDataOption]) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::ephemeral(&interaction))
+	app.do_action(CommandAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
@@ -128,10 +128,10 @@ async fn status(app: App, interaction: &Interaction, _options: &[CommandDataOpti
 						let nano_user = client.current_user().await.into_diagnostic()?.data;
 						format!("🙌 You're logged in as {}", nano_user.attributes.name)
 					} else {
-						format!("⁉️ I've got credentials for you but they're not working")
+						"⁉️ I've got credentials for you but they're not working".to_string()
 					}
 				} else {
-					format!("🙅 You're not logged in")
+					"🙅 You're not logged in".to_string()
 				},
 			),
 			ephemeral: true,
@@ -148,13 +148,13 @@ async fn login_confirm(
 	_options: &[CommandDataOption],
 ) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(NanowrimoLoginConfirm::new(&interaction, member))
+	app.do_action(NanowrimoLoginConfirm::new(interaction, member))
 		.await
 }
 
 async fn login_modal(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let member: Member = Uuid::from_str(uuid).into_diagnostic()?.into();
-	app.do_action(NanowrimoLoginModal::new(&interaction, member))
+	app.do_action(NanowrimoLoginModal::new(interaction, member))
 		.await
 }
 
@@ -192,7 +192,7 @@ async fn login(
 		})
 		.ok_or_else(|| miette!("password is a required field"))?;
 
-	app.do_action(ComponentAck::ephemeral(&interaction))
+	app.do_action(ComponentAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
@@ -200,13 +200,13 @@ async fn login(
 	let login = match NanowrimoLogin::get_for_member(app.clone(), member).await? {
 		Some(mut login) => {
 			debug!(?login.id, "updating login");
-			login.update(app.clone(), &username, password).await?;
+			login.update(app.clone(), username, password).await?;
 			info!(?login.id, ?member, "updated nanowrimo credentials");
 			login
 		}
 		None => {
 			debug!("creating login");
-			let login = NanowrimoLogin::create(app.clone(), member, &username, password).await?;
+			let login = NanowrimoLogin::create(app.clone(), member, username, password).await?;
 			info!(?login.id, ?member, "recorded nanowrimo credentials");
 			login
 		}
@@ -241,7 +241,7 @@ async fn login(
 
 async fn logout(app: App, interaction: &Interaction, _options: &[CommandDataOption]) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::ephemeral(&interaction))
+	app.do_action(CommandAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
@@ -252,9 +252,9 @@ async fn logout(app: App, interaction: &Interaction, _options: &[CommandDataOpti
 				if let Some(login) = NanowrimoLogin::get_for_member(app.clone(), member).await? {
 					debug!(?login.id, ?member, "deleting nano credentials");
 					login.delete(app.clone()).await?;
-					format!("👋 I've forgotten your nanowrimo credentials!\nIf you want to check the wordcount of private projects or update your wordcount with this bot, you'll need to login again.")
+					"👋 I've forgotten your nanowrimo credentials!\nIf you want to check the wordcount of private projects or update your wordcount with this bot, you'll need to login again.".to_string()
 				} else {
-					format!("⁉️ You're not logged in to nanowrimo with the bot")
+					"⁉️ You're not logged in to nanowrimo with the bot".to_string()
 				}
 			),
 			ephemeral: true,

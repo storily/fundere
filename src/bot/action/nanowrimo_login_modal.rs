@@ -45,7 +45,7 @@ impl NanowrimoLoginModal {
 					data: Some(
 						InteractionResponseDataBuilder::new()
 							.custom_id(format!("nanowrimo:login:{member_uuid}"))
-							.title(format!("NaNoWriMo Login"))
+							.title("NaNoWriMo Login".to_string())
 							.components(vec![
                                 Component::ActionRow(ActionRow{
 									components: vec![

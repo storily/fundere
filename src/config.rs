@@ -163,7 +163,7 @@ pub struct DbConfig {
 impl DbConfig {
 	pub async fn connect(&self) -> Result<(Client, Connection<Socket, NoTlsStream>)> {
 		let mut config = if let Some(url) = &self.url {
-			PgConfig::from_str(&url).into_diagnostic()?
+			PgConfig::from_str(url).into_diagnostic()?
 		} else {
 			PgConfig::new()
 		};

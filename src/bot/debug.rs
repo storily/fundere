@@ -72,7 +72,7 @@ pub async fn on_component(
 	debug!(?subids, ?component_data, "debug component action");
 
 	match subids {
-		["publish-error", uuid] => ping_maintainer(app.clone(), interaction, *uuid)
+		["publish-error", uuid] => ping_maintainer(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: publish-error")?,
 		id => warn!(?id, "unhandled debug component action"),
@@ -90,7 +90,7 @@ async fn throw_error(
 }
 
 async fn ping_maintainer(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
-	app.do_action(ComponentAck::ephemeral(&interaction))
+	app.do_action(ComponentAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
