@@ -1,7 +1,7 @@
 use std::{ops::Sub, str::FromStr};
 
-use chrono::{naive::NaiveTime, DateTime, Duration, Utc};
-use miette::{IntoDiagnostic, Result};
+use chrono::{naive::NaiveTime, DateTime, Duration, Timelike, Utc};
+use miette::{miette, IntoDiagnostic, Result};
 
 pub trait ChronoDurationExt {
 	fn positive_or(self, default: Duration) -> Duration;
@@ -104,6 +104,19 @@ pub fn parse_when_relative_to(now: NaiveTime, s: &str) -> Result<NaiveTime> {
 		.and_then(|s| u16::from_str(s).ok())
 	{
 		return Ok(now + Duration::hours(hours as _));
+	}
+
+	if let Some(minutes) = s.strip_prefix(':').and_then(|s| u32::from_str(s).ok()) {
+		return NaiveTime::from_hms_opt(
+			if minutes <= now.minute() {
+				(now.hour() + 1) % 24
+			} else {
+				now.hour()
+			},
+			minutes,
+			0,
+		)
+		.ok_or_else(|| miette!("invalid minutes"));
 	}
 
 	if let Ok(time) = NaiveTime::parse_from_str(s, "%H:%M:%S") {
@@ -216,6 +229,22 @@ mod test {
 		assert_eq!(
 			parse_when("1:23").unwrap(),
 			NaiveTime::from_hms_opt(1, 23, 0).unwrap()
+		);
+	}
+
+	#[test]
+	fn parses_times_without_hours() {
+		assert_eq!(
+			parse_when_relative_to(NaiveTime::from_hms_opt(1, 23, 0).unwrap(), ":30").unwrap(),
+			NaiveTime::from_hms_opt(1, 30, 0).unwrap()
+		);
+		assert_eq!(
+			parse_when_relative_to(NaiveTime::from_hms_opt(1, 23, 0).unwrap(), ":20").unwrap(),
+			NaiveTime::from_hms_opt(2, 20, 0).unwrap()
+		);
+		assert_eq!(
+			parse_when_relative_to(NaiveTime::from_hms_opt(23, 45, 0).unwrap(), ":12").unwrap(),
+			NaiveTime::from_hms_opt(0, 12, 0).unwrap()
 		);
 	}
 }
