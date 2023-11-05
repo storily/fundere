@@ -26,6 +26,7 @@ use crate::{
 };
 
 mod cards;
+mod colours;
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
@@ -57,8 +58,8 @@ pub fn command() -> Result<Command> {
 					("Italian playing card suites", "italian"),
 					("Spanish playing card suites", "spanish"),
 					("Swiss playing card suites", "swiss"),
-					("Tarot card suites", "tarot"),
-					("Tarot nouveau card suites", "nouveau"),
+					("Tarot (cartomancy/divination) card suites", "tarot"),
+					("Tarot nouveau (french playing game) card suites", "nouveau"),
 					("Dashavatara Ganjifa (persia/india) card suites", "ganjifa"),
 					("Moghul Ganjifa (persia/india) card suites", "moghul"),
 					("Extended Hanafuda (japan/korea) card suites", "hanafuda"),
@@ -85,7 +86,7 @@ pub fn command() -> Result<Command> {
 					),
 					("Cartomancy Tarot card values (1-10, JPKQK)", "tarot"),
 					("Cartomancy Tarot Major Arcana", "arcana"),
-					("Tarot nouveau 78-card values (1-10, JKQK)", "nouveau"),
+					("Tarot nouveau 78-card (french playing game) values (1-10, JKQK)", "nouveau"),
 					("Tarot nouveau honour values (1-21), plus fool", "honours"),
 					("Tarot nouveau honour aspects, plus fool", "aspects"),
 					(
@@ -130,7 +131,7 @@ pub fn command() -> Result<Command> {
 					("Full 52-card swiss deck", "swiss"),
 					("Extended 63-card deck used to play Euchre or 500", "euchre"),
 					("Cartomancy Tarot deck", "tarot"),
-					("Tarot Nouveau 78-card deck", "nouveau"),
+					("Tarot Nouveau 78-card (french playing game) deck", "nouveau"),
 					("Tarocco Siciliano deck", "siciliano"),
 					("Tarocco Bolognese deck", "bolognese"),
 					("Tarocco Minchiate deck", "minchiate"),
@@ -144,6 +145,30 @@ pub fn command() -> Result<Command> {
 			.option(IntegerBuilder::new(
 				"count",
 				"How many cards to get (default: 1)",
+			)),
+	)
+	.option(
+		SubCommandBuilder::new("colour", "Get a random colour")
+			.option(
+				StringBuilder::new("palette", "Which colour palette to choose from (default: common)").choices(vec![
+					("Everything", "all"),
+					("Everyday common colours (default)", "common"),
+					("Extended colour names", "extended"),
+					("HTML colour names", "html"),
+					("Beer colour scale", "beer"),
+					("Postage stamp colours", "stamps"),
+					("Crayola crayon colours", "crayola"),
+					("Resene/BS5252 (AU/NZ/UK paints)", "resene"),
+					("Colorsteel (NZ roof/housing)", "colorsteel"),
+					("RAL Classic (German street signs / European cars)", "ral-classic"),
+					("RAL F9 (German military camouflage)", "ral-f9"),
+					("Munsell [NBS/ISCC/NCS] (many governments)", "munsell"),
+					("Saccardo's chromotaxia (1894 latin colour names)", "saccardo"),
+				]),
+			)
+			.option(IntegerBuilder::new(
+				"count",
+				"How many colours to get (default: 1)",
 			)),
 	)
 	.validate()
@@ -177,6 +202,9 @@ pub async fn on_command(
 		Some(("card", opts)) => card(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: card")?,
+		Some(("colour", opts)) => colour(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: colour")?,
 		Some((other, _)) => warn!("unhandled random subcommand: {other}"),
 		_ => error!("unreachable bare random command"),
 	}
@@ -259,6 +287,28 @@ async fn card(app: App, interaction: &Interaction, options: &[CommandDataOption]
 	let result = variant
 		.hand(count as _)
 		.into_iter()
+		.map(|s| format!("**{}**", s))
+		.join(", ");
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(result),
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
+}
+
+async fn colour(app: App, interaction: &Interaction, options: &[CommandDataOption]) -> Result<()> {
+	let count = get_integer(options, "count").unwrap_or(1);
+	let palette = get_string(options, "palette").unwrap_or("common");
+	let palette = colours::Palette::from_str(palette)?;
+	app.do_action(CommandAck::new(interaction)).await.log().ok();
+
+	let result = (0..count)
+		.map(|_| palette.random())
 		.map(|s| format!("**{}**", s))
 		.join(", ");
 
