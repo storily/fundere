@@ -23,28 +23,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
-    - name: Configure toolchain
-      run: |
-        rustup toolchain install --profile minimal --no-self-update ${{ matrix.rust }}
-        rustup target add ${{ matrix.target }}
-        rustup default ${{ matrix.rust }}
-        rm .cargo/config.toml
-        sudo apt install -y musl-tools
+      - name: Configure toolchain
+        run: |
+          rustup toolchain install --profile minimal --no-self-update ${{ matrix.rust }}
+          rustup target add ${{ matrix.target }}
+          rustup default ${{ matrix.rust }}
+          sudo apt install -y musl-tools
 
-    - name: Configure caching
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-test-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-test-${{ matrix.target }}-
-          ${{ runner.os }}-cargo-test-
+      - name: Configure caching
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-test-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-${{ matrix.target }}-
+            ${{ runner.os }}-cargo-test-
 
-    - name: Test
-      run: cargo test
+      - name: Test
+        run: cargo test
