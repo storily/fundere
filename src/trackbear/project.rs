@@ -70,29 +70,6 @@ impl Project {
 		active_goals.first().copied()
 	}
 
-	/// Get all currently active goals for this project
-	pub fn current_goals(&self) -> Vec<&Goal> {
-		let today = chrono::Utc::now().date_naive();
-
-		self.goals
-			.iter()
-			.filter(|g| {
-				if let (Some(start), Some(end)) = (
-					g.start_date
-						.as_ref()
-						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
-					g.end_date
-						.as_ref()
-						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
-				) {
-					today >= start && today <= end
-				} else {
-					false
-				}
-			})
-			.collect()
-	}
-
 	/// Calculate progress for a given goal
 	pub fn goal_progress(&self, goal: &Goal) -> Option<GoalProgress> {
 		// Only calculate for word-based goals
@@ -188,6 +165,7 @@ impl Project {
 	}
 }
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone)]
 pub struct GoalProgress {
 	pub current: i64,

@@ -11,7 +11,6 @@ use crate::{
 		App,
 	},
 	db::{member::Member, project::Project, sprint::Sprint, trackbear_login::TrackbearLogin},
-	nano::project::Project as NanoProject,
 };
 
 use super::{Action, ActionClass, Args};
@@ -39,8 +38,9 @@ impl SprintSaveWords {
 			return Ok(None);
 		}
 
-		// TODO: Fetch project title from TrackBear API
-		let title = "your project";
+		// Fetch project title from TrackBear API
+		let trackbear_project = project.fetch(app.clone()).await?;
+		let title = trackbear_project.title();
 
 		let participant = sprint.participant(app.clone(), member).await?;
 		let Some(diff) = participant.words_written() else {
@@ -56,7 +56,7 @@ impl SprintSaveWords {
 				interaction,
 				GenericResponseData {
 					ephemeral: true,
-					content: Some(format!("Save {diff:+} words to «{title}» on Nanowrimo?")),
+					content: Some(format!("Save {diff:+} words to «{title}» on TrackBear?")),
 					components: action_row(vec![
 						Component::Button(Button {
 							custom_id: Some(format!(

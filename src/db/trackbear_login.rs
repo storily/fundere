@@ -4,7 +4,6 @@ use chrono::{DateTime, Utc};
 use miette::{Context, IntoDiagnostic, Result};
 use secret_vault_value::SecretValue;
 use tokio_postgres::Row;
-use tracing::debug;
 use uuid::Uuid;
 
 use crate::bot::App;
@@ -12,6 +11,7 @@ use crate::trackbear::TrackbearClient;
 
 use super::member::Member;
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone)]
 pub struct TrackbearLogin {
 	pub id: Uuid,
@@ -67,11 +67,6 @@ impl TrackbearLogin {
 				}
 			})
 			.wrap_err("db: get trackbear login")
-	}
-
-	#[tracing::instrument(skip(app))]
-	pub async fn get_default(app: App) -> Result<Option<Self>> {
-		Self::get(app, Uuid::nil()).await
 	}
 
 	#[tracing::instrument(skip(app))]
@@ -146,21 +141,5 @@ impl TrackbearLogin {
 		let client = TrackbearClient::new(self.api_key.clone())?;
 		client.validate().await?;
 		Ok(client)
-	}
-
-	#[tracing::instrument(skip(app))]
-	pub async fn client_for_member(app: App, member: Member) -> Result<Option<TrackbearClient>> {
-		if let Some(login) = Self::get_for_member(app.clone(), member).await? {
-			debug!(?login.id, "trying member trackbear login");
-			match login.client().await {
-				Ok(client) => Ok(Some(client)),
-				Err(err) => {
-					debug!(?login.id, "member trackbear login failed: {:?}", err);
-					Ok(None)
-				}
-			}
-		} else {
-			Ok(None)
-		}
 	}
 }

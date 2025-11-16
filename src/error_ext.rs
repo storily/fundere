@@ -3,6 +3,7 @@ use tracing::error;
 
 pub trait ErrorExt {
 	fn log(self) -> Self;
+	#[allow(dead_code)]
 	fn debug_log(self) -> Self;
 }
 

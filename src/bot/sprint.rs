@@ -280,17 +280,9 @@ async fn sprint_new(
 	let member = Member::try_from(interaction)?;
 	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
-	let now = Utc::now().with_timezone(
-		&member
-			.timezone(app.clone())
-			.await
-			.unwrap_or_else(|error| {
-				error!(%error, ?member, "Ignoring errors when fetching member timezone");
-				None
-			})
-			.unwrap_or(chrono_tz::Pacific::Auckland),
-		// TODO: default first to a config option
-	);
+	// TrackBear doesn't provide timezone info, so we use UTC for sprint scheduling
+	// TODO: Consider storing user timezone preferences in the database
+	let now = Utc::now().with_timezone(&chrono_tz::UTC);
 
 	let when = parse_when_relative_to(now.time(), get_string(options, "when").unwrap_or("15m"))?;
 
@@ -590,7 +582,7 @@ async fn save_words(
 
 	let login = TrackbearLogin::get_for_member(app.clone(), member)
 		.await
-		.and_then(|opt| opt.ok_or_else(|| miette!("no nano login for {:?}", member)))?;
+		.and_then(|opt| opt.ok_or_else(|| miette!("no trackbear login for {:?}", member)))?;
 
 	save_words_action(app, interaction, &login, &project, words).await
 }

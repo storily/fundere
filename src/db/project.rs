@@ -17,6 +17,7 @@ use crate::{
 
 use super::member::Member;
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone)]
 pub struct Project {
 	pub id: Uuid,
@@ -234,15 +235,4 @@ fn format_count(n: i64) -> String {
 	} else {
 		format!("{:.0}M", (n as f64) / 1_000_000.0)
 	}
-}
-
-fn tracking(mut diff: i64) -> String {
-	let state = if diff < 0 {
-		diff = diff.abs();
-		"behind"
-	} else {
-		"ahead"
-	};
-
-	format!("{} {state}", format_count(diff))
 }

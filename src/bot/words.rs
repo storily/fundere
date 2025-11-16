@@ -198,7 +198,7 @@ async fn override_goal(
 	} else {
 		project.unset_goal(app.clone()).await?;
 		debug!(?project.id, "unset custom goal");
-		"Your goal has been reverted to the one from the nano website (if any).".to_string()
+		"Your goal has been reverted to the one from TrackBear (if any).".to_string()
 	};
 
 	app.send_response(GenericResponse::from_interaction(

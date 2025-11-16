@@ -1,6 +1,4 @@
-use chrono_tz::Tz;
 use miette::{miette, IntoDiagnostic, Report, Result};
-use nanowrimo::{NanoKind, ProjectObject};
 use postgres_types::{FromSql, ToSql};
 use twilight_mention::{fmt::MentionFormat, Mention};
 use twilight_model::{
@@ -13,10 +11,7 @@ use twilight_model::{
 };
 use uuid::Uuid;
 
-use crate::{
-	bot::App,
-	db::{project::Project, trackbear_login::TrackbearLogin},
-};
+use crate::bot::App;
 
 // Discord snowflake IDs will never (read: unless they either change the
 // schema or we're 10k years in the future) reach even 60 bits of length
@@ -43,10 +38,6 @@ impl Member {
 	pub async fn name(self, app: App) -> Result<String> {
 		let member = self.to_member(app).await?;
 		Ok(member.nick.unwrap_or(member.user.name))
-	}
-
-	pub async fn timezone(self, app: App) -> Result<Option<Tz>> {
-		todo!("no timezone info in trackbear")
 	}
 }
 

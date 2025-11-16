@@ -1,4 +1,3 @@
-use chrono::NaiveDate;
 use miette::{miette, Context, IntoDiagnostic, Result};
 use reqwest::{header, Client, StatusCode};
 use secret_vault_value::SecretValue;
@@ -21,11 +20,13 @@ fn user_agent() -> String {
 #[derive(Debug, Clone)]
 pub struct TrackbearClient {
 	client: Client,
+	#[expect(dead_code, reason = "unused")]
 	api_key: SecretValue,
 }
 
 #[derive(Debug, Deserialize)]
 struct ApiResponse<T> {
+	#[expect(dead_code, reason = "unused")]
 	success: bool,
 	data: T,
 }
@@ -56,6 +57,7 @@ async fn parse_api_response<T: for<'de> Deserialize<'de>>(
 	}
 }
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Balance {
@@ -67,6 +69,7 @@ pub struct Balance {
 	pub line: Option<i64>,
 }
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
@@ -111,6 +114,7 @@ pub struct GoalParameters {
 	pub threshold: GoalThreshold,
 }
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Goal {
@@ -134,6 +138,7 @@ pub struct Goal {
 	pub achieved: bool,
 }
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tag {
@@ -147,6 +152,7 @@ pub struct Tag {
 	pub color: Option<String>,
 }
 
+#[expect(dead_code, reason = "unused fields")]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tally {
@@ -291,16 +297,6 @@ impl TrackbearClient {
 		}
 	}
 
-	/// Get the base URL for the API
-	pub fn base_url() -> &'static str {
-		API_BASE_URL
-	}
-
-	/// Get the underlying HTTP client
-	pub fn http_client(&self) -> &Client {
-		&self.client
-	}
-
 	/// List all projects
 	pub async fn list_projects(&self) -> Result<Vec<Project>> {
 		let url = format!("{}/project", API_BASE_URL);
@@ -361,75 +357,6 @@ impl TrackbearClient {
 		}
 
 		parse_api_response(response, "goals").await
-	}
-
-	/// List tallies with optional filters
-	pub async fn list_tallies(
-		&self,
-		work_ids: Option<&[i64]>,
-		tag_ids: Option<&[i64]>,
-		measure: Option<&str>,
-		start_date: Option<NaiveDate>,
-		end_date: Option<NaiveDate>,
-	) -> Result<Vec<Tally>> {
-		let mut url = format!("{}/tally", API_BASE_URL);
-		let mut query_params = Vec::new();
-
-		if let Some(works) = work_ids {
-			for work_id in works {
-				query_params.push(format!("works[]={}", work_id));
-			}
-		}
-
-		if let Some(tags) = tag_ids {
-			for tag_id in tags {
-				query_params.push(format!("tags[]={}", tag_id));
-			}
-		}
-
-		if let Some(m) = measure {
-			query_params.push(format!("measure={}", m));
-		}
-
-		if let Some(start) = start_date {
-			query_params.push(format!("startDate={}", start.format("%Y-%m-%d")));
-		}
-
-		if let Some(end) = end_date {
-			query_params.push(format!("endDate={}", end.format("%Y-%m-%d")));
-		}
-
-		if !query_params.is_empty() {
-			url.push('?');
-			url.push_str(&query_params.join("&"));
-		}
-
-		debug!("fetching tallies from TrackBear: {}", url);
-
-		let response = self
-			.client
-			.get(&url)
-			.send()
-			.await
-			.into_diagnostic()
-			.wrap_err("failed to connect to TrackBear API")?;
-
-		let status = response.status();
-		debug!("list tallies response: {}", status);
-
-		if !status.is_success() {
-			let error_text = response
-				.text()
-				.await
-				.unwrap_or_else(|_| "unknown error".to_string());
-			return Err(miette!(
-				"TrackBear API returned error (status {}): {}",
-				status,
-				error_text
-			));
-		}
-
-		parse_api_response(response, "tallies").await
 	}
 
 	/// Create a new tally
