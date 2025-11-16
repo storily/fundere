@@ -10,6 +10,7 @@ pub(crate) mod db;
 pub(crate) mod error_ext;
 pub(crate) mod nano;
 pub(crate) mod nominare;
+pub(crate) mod trackbear;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()

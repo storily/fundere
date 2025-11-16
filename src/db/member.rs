@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use crate::{
 	bot::App,
-	db::{nanowrimo_login::NanowrimoLogin, project::Project},
+	db::{project::Project, trackbear_login::TrackbearLogin},
 };
 
 // Discord snowflake IDs will never (read: unless they either change the
@@ -46,11 +46,11 @@ impl Member {
 	}
 
 	pub async fn timezone(self, app: App) -> Result<Option<Tz>> {
-		let user = if let Some(login) = NanowrimoLogin::get_for_member(app.clone(), self).await? {
+		let user = if let Some(login) = TrackbearLogin::get_for_member(app.clone(), self).await? {
 			let client = login.client().await?;
 			client.current_user().await.into_diagnostic()?
 		} else if let Some(project) = Project::get_for_member(app.clone(), self).await? {
-			let client = NanowrimoLogin::default_client(app.clone()).await?;
+			let client = TrackbearLogin::client_for_member(app.clone(), self).await?;
 			let nano_project = client
 				.get_id::<ProjectObject>(NanoKind::Project, project.nano_id)
 				.await

@@ -21,7 +21,7 @@ use crate::{
 		utils::command::{get_integer, get_string},
 		App,
 	},
-	db::{member::Member, nanowrimo_login::NanowrimoLogin, project::Project},
+	db::{member::Member, project::Project, trackbear_login::TrackbearLogin},
 	error_ext::ErrorExt,
 	nano::project::Project as NanoProject,
 };
@@ -140,7 +140,7 @@ async fn set_project(
 		.ok();
 
 	let member = Member::try_from(interaction)?;
-	let client = NanowrimoLogin::client_for_member_or_default(app.clone(), member).await?;
+	let client = TrackbearLogin::client_for_member(app.clone(), member).await?;
 
 	debug!(?slug, ?member, "checking project exists / is accessible");
 	let nano_project: ItemResponse<ProjectObject> = client
@@ -244,9 +244,9 @@ async fn record_words(
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
-	let login = NanowrimoLogin::get_for_member(app.clone(), member)
+	let login = TrackbearLogin::get_for_member(app.clone(), member)
 		.await?
-		.ok_or_else(|| miette!("You need to /nanowrimo login to be able to record words!"))?;
+		.ok_or_else(|| miette!("You need to /trackbear login to be able to record words!"))?;
 
 	save_words(app, interaction, &login, &project, words).await
 }
@@ -254,7 +254,7 @@ async fn record_words(
 pub async fn save_words(
 	app: App,
 	interaction: &Interaction,
-	login: &NanowrimoLogin,
+	login: &TrackbearLogin,
 	project: &Project,
 	words: SaveWords,
 ) -> Result<()> {

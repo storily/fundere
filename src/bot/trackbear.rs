@@ -17,29 +17,29 @@ use uuid::Uuid;
 
 use crate::{
 	bot::{
-		action::{CommandAck, ComponentAck, NanowrimoLoginConfirm, NanowrimoLoginModal},
+		action::{CommandAck, ComponentAck, TrackbearLoginConfirm, TrackbearLoginModal},
 		context::{GenericResponse, GenericResponseData},
 		App,
 	},
-	db::{member::Member, nanowrimo_login::NanowrimoLogin},
+	db::{member::Member, trackbear_login::TrackbearLogin},
 	error_ext::ErrorExt,
 };
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
 	CommandBuilder::new(
-		"nanowrimo",
-		"Nanowrimo login control",
+		"trackbear",
+		"TrackBear login control",
 		CommandType::ChatInput,
 	)
 	.option(SubCommandBuilder::new("status", "Check your login status"))
 	.option(SubCommandBuilder::new(
 		"login",
-		"Login to nanowrimo with the bot",
+		"Login to TrackBear with the bot",
 	))
 	.option(SubCommandBuilder::new(
 		"logout",
-		"Delete your nanowrimo login from the bot",
+		"Delete your TrackBear login from the bot",
 	))
 	.validate()
 	.into_diagnostic()
@@ -69,8 +69,8 @@ pub async fn on_command(
 		Some(("logout", opts)) => logout(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: logout")?,
-		Some((other, _)) => warn!("unhandled nanowrimo subcommand: {other}"),
-		_ => error!("unreachable bare nanowrimo command"),
+		Some((other, _)) => warn!("unhandled trackbear subcommand: {other}"),
+		_ => error!("unreachable bare trackbear command"),
 	}
 
 	Ok(())
@@ -82,13 +82,13 @@ pub async fn on_component(
 	subids: &[&str],
 	component_data: &MessageComponentInteractionData,
 ) -> Result<()> {
-	debug!(?subids, ?component_data, "nanowrimo component action");
+	debug!(?subids, ?component_data, "trackbear component action");
 
 	match subids {
 		["login", uuid] => login_modal(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: login")?,
-		id => warn!(?id, "unhandled nanowrimo component action"),
+		id => warn!(?id, "unhandled trackbear component action"),
 	}
 
 	Ok(())
@@ -100,13 +100,13 @@ pub async fn on_modal(
 	subids: &[&str],
 	component_data: &ModalInteractionData,
 ) -> Result<()> {
-	debug!(?subids, ?component_data, "nanowrimo modal action");
+	debug!(?subids, ?component_data, "trackbear modal action");
 
 	match subids {
 		["login", uuid] => login(app.clone(), interaction, uuid, component_data)
 			.await
-			.wrap_err("action: nanowrimo modal: login")?,
-		id => warn!(?id, "unhandled nanowrimo modal action"),
+			.wrap_err("action: trackbear modal: login")?,
+		id => warn!(?id, "unhandled trackbear modal action"),
 	}
 
 	Ok(())
@@ -122,11 +122,10 @@ async fn status(app: App, interaction: &Interaction, _options: &[CommandDataOpti
 		interaction,
 		GenericResponseData {
 			content: Some(
-				if let Some(login) = NanowrimoLogin::get_for_member(app.clone(), member).await? {
-					debug!(?login.id, ?member, "checking nano credentials");
-					if let Ok(client) = login.client().await {
-						let nano_user = client.current_user().await.into_diagnostic()?.data;
-						format!("🙌 You're logged in as {}", nano_user.attributes.name)
+				if let Some(login) = TrackbearLogin::get_for_member(app.clone(), member).await? {
+					debug!(?login.id, ?member, "checking trackbear credentials");
+					if login.client().await.is_ok() {
+						"🙌 You're logged in to TrackBear!".to_string()
 					} else {
 						"⁉️ I've got credentials for you but they're not working".to_string()
 					}
@@ -148,13 +147,13 @@ async fn login_confirm(
 	_options: &[CommandDataOption],
 ) -> Result<()> {
 	let member = Member::try_from(interaction)?;
-	app.do_action(NanowrimoLoginConfirm::new(interaction, member))
+	app.do_action(TrackbearLoginConfirm::new(interaction, member))
 		.await
 }
 
 async fn login_modal(app: App, interaction: &Interaction, uuid: &str) -> Result<()> {
 	let member: Member = Uuid::from_str(uuid).into_diagnostic()?.into();
-	app.do_action(NanowrimoLoginModal::new(interaction, member))
+	app.do_action(TrackbearLoginModal::new(interaction, member))
 		.await
 }
 
@@ -166,71 +165,53 @@ async fn login(
 ) -> Result<()> {
 	let member: Member = Uuid::from_str(uuid).into_diagnostic()?.into();
 
-	let username = data
+	let api_key = data
 		.components
 		.iter()
 		.flat_map(|row| row.components.iter())
 		.find_map(|component| {
-			if component.custom_id == "username" {
-				component.value.as_deref()
-			} else {
-				None
-			}
-		})
-		.ok_or_else(|| miette!("username is a required field"))?;
-
-	let password = data
-		.components
-		.iter()
-		.flat_map(|row| row.components.iter())
-		.find_map(|component| {
-			if component.custom_id == "password" {
+			if component.custom_id == "api_key" {
 				component.value.as_deref().map(SecretValue::from)
 			} else {
 				None
 			}
 		})
-		.ok_or_else(|| miette!("password is a required field"))?;
+		.ok_or_else(|| miette!("API key is a required field"))?;
 
 	app.do_action(ComponentAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
 
-	let login = match NanowrimoLogin::get_for_member(app.clone(), member).await? {
+	let login = match TrackbearLogin::get_for_member(app.clone(), member).await? {
 		Some(mut login) => {
 			debug!(?login.id, "updating login");
-			login.update(app.clone(), username, password).await?;
-			info!(?login.id, ?member, "updated nanowrimo credentials");
+			login.update(app.clone(), api_key).await?;
+			info!(?login.id, ?member, "updated trackbear credentials");
 			login
 		}
 		None => {
 			debug!("creating login");
-			let login = NanowrimoLogin::create(app.clone(), member, username, password).await?;
-			info!(?login.id, ?member, "recorded nanowrimo credentials");
+			let login = TrackbearLogin::create(app.clone(), member, api_key).await?;
+			info!(?login.id, ?member, "recorded trackbear credentials");
 			login
 		}
 	};
 
-	debug!(?login.id, "checking nano credentials");
+	debug!(?login.id, "checking trackbear credentials");
 	let client = login
 		.client()
 		.await
-		.wrap_err("couldn't login to nanowrimo!")?;
-	debug!(?login.id, "successfully logged into nano");
+		.wrap_err("couldn't login to trackbear!")?;
+	debug!(?login.id, "successfully logged into trackbear");
 
-	let name = client
-		.current_user()
-		.await
-		.into_diagnostic()?
-		.data
-		.attributes
-		.name;
+	// TODO: Get username from TrackBear API
+	let name = "TrackBear User";
 
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
-			content: Some(format!("✔ You're logged in to nanowrimo as {name}!\nYou can now show the wordcount of private projects and update your wordcount with this bot.")),
+			content: Some(format!("✔ You're logged in to TrackBear as {name}!\nYou can now show the wordcount of your projects and update your wordcount with this bot.")),
 			ephemeral: true,
 			..Default::default()
 		},
@@ -249,12 +230,12 @@ async fn logout(app: App, interaction: &Interaction, _options: &[CommandDataOpti
 		interaction,
 		GenericResponseData {
 			content: Some(
-				if let Some(login) = NanowrimoLogin::get_for_member(app.clone(), member).await? {
-					debug!(?login.id, ?member, "deleting nano credentials");
+				if let Some(login) = TrackbearLogin::get_for_member(app.clone(), member).await? {
+					debug!(?login.id, ?member, "deleting trackbear credentials");
 					login.delete(app.clone()).await?;
-					"👋 I've forgotten your nanowrimo credentials!\nIf you want to check the wordcount of private projects or update your wordcount with this bot, you'll need to login again.".to_string()
+					"👋 I've forgotten your TrackBear credentials!\nIf you want to check the wordcount of your projects or update your wordcount with this bot, you'll need to login again.".to_string()
 				} else {
-					"⁉️ You're not logged in to nanowrimo with the bot".to_string()
+					"⁉️ You're not logged in to TrackBear with the bot".to_string()
 				}
 			),
 			ephemeral: true,

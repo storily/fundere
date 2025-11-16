@@ -9,7 +9,7 @@ use tracing::debug;
 
 use crate::{
 	bot::App,
-	db::{member::Member, nanowrimo_login::NanowrimoLogin},
+	db::{member::Member, trackbear_login::TrackbearLogin},
 };
 
 use super::goal::Goal;
@@ -24,7 +24,9 @@ pub struct Project {
 
 impl Project {
 	pub async fn fetch(app: App, member: Member, id: u64) -> Result<Self> {
-		let client = NanowrimoLogin::client_for_member_or_default(app.clone(), member).await?;
+		let client = TrackbearLogin::client_for_member(app.clone(), member)
+			.await?
+			.ok_or_else(|| miette!("No TrackBear login found. Use /trackbear login first."))?;
 		Self::fetch_with_client(client, id).await
 	}
 

@@ -5,6 +5,7 @@ version = "0.0.0"
 authors = ["Félix Saparelli <felix@passcod.name>"]
 license = "Apache-2.0"
 description = "Yet Another Implementation of Sass"
+repository = "https://github.com/storily/fundere"
 publish = false
 
 edition = "2021"

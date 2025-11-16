@@ -23,10 +23,10 @@ pub mod choose;
 pub mod context;
 pub mod debug;
 pub mod names;
-pub mod nanowrimo;
 pub mod random;
 pub mod related;
 pub mod sprint;
+pub mod trackbear;
 pub mod utils;
 pub mod words;
 
@@ -51,7 +51,7 @@ pub async fn start(config: Config) -> Result<()> {
 				choose::command()?,
 				debug::command()?,
 				names::command()?,
-				nanowrimo::command()?,
+				trackbear::command()?,
 				random::command()?,
 				related::command()?,
 				sprint::command()?,
@@ -172,9 +172,9 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					"names" => names::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: names"),
-					"nanowrimo" => nanowrimo::on_command(app.clone(), interaction, data)
+					"trackbear" => trackbear::on_command(app.clone(), interaction, data)
 						.await
-						.wrap_err("command: nanowrimo"),
+						.wrap_err("command: trackbear"),
 					"random" => random::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: random"),
@@ -210,10 +210,10 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 							.await
 							.wrap_err("component: debug")
 					}
-					Some(&"nanowrimo") => {
-						nanowrimo::on_component(app.clone(), interaction, &subids[1..], data)
+					Some(&"trackbear") => {
+						trackbear::on_component(app.clone(), interaction, &subids[1..], data)
 							.await
-							.wrap_err("component: nanowrimo")
+							.wrap_err("component: trackbear")
 					}
 					Some(other) => {
 						warn!("unhandled component action: {other:?}");
@@ -234,10 +234,10 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 							.await
 							.wrap_err("modal: sprint")
 					}
-					Some(&"nanowrimo") => {
-						nanowrimo::on_modal(app.clone(), interaction, &subids[1..], data)
+					Some(&"trackbear") => {
+						trackbear::on_modal(app.clone(), interaction, &subids[1..], data)
 							.await
-							.wrap_err("modal: nanowrimo")
+							.wrap_err("modal: trackbear")
 					}
 					Some(other) => {
 						warn!("unhandled modal submit: {other:?}");

@@ -38,9 +38,9 @@ use crate::{
 	db::{
 		channel::Channel,
 		member::Member,
-		nanowrimo_login::NanowrimoLogin,
 		project::Project,
 		sprint::{Sprint, SprintStatus},
+		trackbear_login::TrackbearLogin,
 	},
 	error_ext::ErrorExt,
 };
@@ -588,7 +588,7 @@ async fn save_words(
 		.and_then(|opt| opt.ok_or_else(|| miette!("no project for {:?}", member)))
 		.wrap_err("project not found")?;
 
-	let login = NanowrimoLogin::get_for_member(app.clone(), member)
+	let login = TrackbearLogin::get_for_member(app.clone(), member)
 		.await
 		.and_then(|opt| opt.ok_or_else(|| miette!("no nano login for {:?}", member)))?;
 
@@ -602,7 +602,7 @@ async fn save_never(app: App, interaction: &Interaction, login_id: &str) -> Resu
 		.log()
 		.ok();
 
-	let Some(mut login) = NanowrimoLogin::get(app.clone(), login_id)
+	let Some(mut login) = TrackbearLogin::get(app.clone(), login_id)
 		.await
 		.wrap_err("login not found")?
 	else {
