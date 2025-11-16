@@ -271,6 +271,11 @@ async fn list_projects(
 	let client = login.client().await?;
 	let mut projects = client.list_projects().await?;
 
+	// Get the current project for this member
+	use crate::db::project::Project;
+	let current_project = Project::get_for_member(app.clone(), member).await?;
+	let current_project_id = current_project.map(|p| p.trackbear_id);
+
 	// Sort by last updated (most recent first)
 	projects.sort_by(|a, b| b.last_updated.cmp(&a.last_updated));
 
@@ -303,12 +308,19 @@ async fn list_projects(
 				words = project.totals.word.unwrap_or_default()
 			));
 
+			let is_current = current_project_id == Some(project.id);
+			let button_style = if is_current {
+				ButtonStyle::Success
+			} else {
+				ButtonStyle::Primary
+			};
+
 			components.push(Component::Button(Button {
 				custom_id: Some(format!("trackbear:set-project:{}", project.id)),
 				disabled: false,
 				emoji: None,
 				label: Some(project.title.clone()),
-				style: ButtonStyle::Primary,
+				style: button_style,
 				url: None,
 			}));
 		}
