@@ -1,2 +1,1 @@
--- Rename nano_id column to trackbear_id in projects table
-ALTER TABLE projects RENAME COLUMN nano_id TO trackbear_id;
+ALTER TABLE projects DROP COLUMN nano_id ADD COLUMN trackbear_id bigint not null;
