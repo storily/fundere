@@ -41,6 +41,10 @@ pub fn command() -> Result<Command> {
 		"logout",
 		"Delete your TrackBear login from the bot",
 	))
+	.option(SubCommandBuilder::new(
+		"projects",
+		"List your TrackBear projects",
+	))
 	.validate()
 	.into_diagnostic()
 	.map(|cmd| cmd.build())
@@ -69,6 +73,9 @@ pub async fn on_command(
 		Some(("logout", opts)) => logout(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: logout")?,
+		Some(("projects", opts)) => list_projects(app.clone(), interaction, opts)
+			.await
+			.wrap_err("command: projects")?,
 		Some((other, _)) => warn!("unhandled trackbear subcommand: {other}"),
 		_ => error!("unreachable bare trackbear command"),
 	}
@@ -88,6 +95,9 @@ pub async fn on_component(
 		["login", uuid] => login_modal(app.clone(), interaction, uuid)
 			.await
 			.wrap_err("action: login")?,
+		["set-project", project_id] => set_project(app.clone(), interaction, project_id)
+			.await
+			.wrap_err("action: set-project")?,
 		id => warn!(?id, "unhandled trackbear component action"),
 	}
 
@@ -238,6 +248,129 @@ async fn logout(app: App, interaction: &Interaction, _options: &[CommandDataOpti
 					"⁉️ You're not logged in to TrackBear with the bot".to_string()
 				}
 			),
+			ephemeral: true,
+			..Default::default()
+		},
+	))
+	.await
+	.map(drop)
+}
+
+async fn list_projects(
+	app: App,
+	interaction: &Interaction,
+	_options: &[CommandDataOption],
+) -> Result<()> {
+	let member = Member::try_from(interaction)?;
+	app.do_action(CommandAck::ephemeral(interaction))
+		.await
+		.log()
+		.ok();
+
+	let login = TrackbearLogin::get_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("You need to /trackbear login first!"))?;
+
+	let client = login.client().await?;
+	let mut projects = client.list_projects().await?;
+
+	// Sort by last updated (most recent first)
+	projects.sort_by(|a, b| b.last_updated.cmp(&a.last_updated));
+
+	// Take only the first 10
+	projects.truncate(10);
+
+	if projects.is_empty() {
+		app.send_response(GenericResponse::from_interaction(
+			interaction,
+			GenericResponseData {
+				content: Some("You don't have any projects in TrackBear yet!".to_string()),
+				ephemeral: true,
+				..Default::default()
+			},
+		))
+		.await
+		.map(drop)
+	} else {
+		use twilight_model::channel::message::component::{
+			ActionRow, Button, ButtonStyle, Component,
+		};
+
+		let mut content = String::from("**Your TrackBear Projects:**\n\n");
+		let mut components = Vec::new();
+
+		for project in &projects {
+			content.push_str(&format!(
+				"• **{}** (ID: {}) - {} words\n",
+				project.title, project.id, project.totals.word
+			));
+
+			components.push(Component::ActionRow(ActionRow {
+				components: vec![Component::Button(Button {
+					custom_id: Some(format!("trackbear:set-project:{}", project.id)),
+					disabled: false,
+					emoji: None,
+					label: Some(format!("Set \"{}\" as current", project.title)),
+					style: ButtonStyle::Primary,
+					url: None,
+				})],
+			}));
+		}
+
+		app.send_response(GenericResponse::from_interaction(
+			interaction,
+			GenericResponseData {
+				content: Some(content),
+				components,
+				ephemeral: true,
+				..Default::default()
+			},
+		))
+		.await
+		.map(drop)
+	}
+}
+
+async fn set_project(app: App, interaction: &Interaction, project_id_str: &str) -> Result<()> {
+	let project_id = i64::from_str(project_id_str).into_diagnostic()?;
+	let member = Member::try_from(interaction)?;
+
+	app.do_action(ComponentAck::ephemeral(interaction))
+		.await
+		.log()
+		.ok();
+
+	let login = TrackbearLogin::get_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("You need to /trackbear login first!"))?;
+
+	let client = login.client().await?;
+
+	// Verify the project exists and user has access
+	let projects = client.list_projects().await?;
+	let trackbear_project = projects
+		.into_iter()
+		.find(|p| p.id == project_id)
+		.ok_or_else(|| {
+			miette!(
+				"Project with ID {} not found in your TrackBear account",
+				project_id
+			)
+		})?;
+
+	debug!(?trackbear_project, ?member, "saving project");
+
+	use crate::db::project::Project;
+	let project = Project::create_or_replace(app.clone(), member, project_id).await?;
+	debug!(?project.id, ?member, "saved project");
+
+	app.send_response(GenericResponse::from_interaction(
+		interaction,
+		GenericResponseData {
+			content: Some(format!(
+				"✅ Set **{}** as your current project! Use `/words show` to see your progress.",
+				trackbear_project.title
+			)),
 			ephemeral: true,
 			..Default::default()
 		},

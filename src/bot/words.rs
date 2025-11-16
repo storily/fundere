@@ -32,7 +32,7 @@ pub fn command() -> Result<Command> {
 			"Show off your word count and any pretties",
 		))
 		.option(
-			SubCommandBuilder::new("project", "Configure which project you're working on")
+			SubCommandBuilder::new("project", "Set project by ID (or use /trackbear projects)")
 				.option(IntegerBuilder::new("id", "The TrackBear project ID").required(true)),
 		)
 		.option(
@@ -161,7 +161,7 @@ async fn set_project(
 		interaction,
 		GenericResponseData {
 			content: Some(format!(
-				"Got it! To show off your wordcount for {}, call **/words show**",
+				"Got it! To show off your wordcount for {}, call **/words show**\n\n💡 Tip: Use `/trackbear projects` for an easier way to select your project!",
 				trackbear_project.title
 			)),
 			ephemeral: true,
