@@ -20,6 +20,7 @@ const MIGRATIONS: &[(&str, &str)] = &[
 	migration!("005_nano_dont_ask_me"),
 	migration!("006_trackbear_migration"),
 	migration!("007_rename_nano_id_to_trackbear_id"),
+	migration!("008_drop_project_goals"),
 ];
 
 #[cfg(debug_assertions)]
