@@ -3,7 +3,7 @@ use miette::{miette, Context, IntoDiagnostic, Result};
 use reqwest::{header, Client, StatusCode};
 use secret_vault_value::SecretValue;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
 use tracing::{debug, warn};
 
 const API_BASE_URL: &str = "https://trackbear.app/api/v1";
@@ -24,15 +24,47 @@ pub struct TrackbearClient {
 	api_key: SecretValue,
 }
 
+#[derive(Debug, Deserialize)]
+struct ApiResponse<T> {
+	success: bool,
+	data: T,
+}
+
+/// Helper to parse API response, logging bytes on failure
+async fn parse_api_response<T: for<'de> Deserialize<'de>>(
+	response: reqwest::Response,
+	context: &str,
+) -> Result<T> {
+	let bytes = response
+		.bytes()
+		.await
+		.into_diagnostic()
+		.wrap_err_with(|| format!("failed to read response body for {}", context))?;
+
+	match serde_json::from_slice::<ApiResponse<T>>(&bytes) {
+		Ok(api_response) => Ok(api_response.data),
+		Err(err) => {
+			debug!(
+				"Failed to parse {} response. Raw bytes: {:?}",
+				context, bytes
+			);
+			debug!("Response as string: {}", String::from_utf8_lossy(&bytes));
+			Err(err)
+				.into_diagnostic()
+				.wrap_err_with(|| format!("failed to parse {} response", context))
+		}
+	}
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Balance {
-	pub word: i64,
-	pub time: i64,
-	pub page: i64,
-	pub chapter: i64,
-	pub scene: i64,
-	pub line: i64,
+	pub word: Option<i64>,
+	pub time: Option<i64>,
+	pub page: Option<i64>,
+	pub chapter: Option<i64>,
+	pub scene: Option<i64>,
+	pub line: Option<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -42,24 +74,35 @@ pub struct Project {
 	pub uuid: String,
 	pub created_at: String,
 	pub updated_at: String,
+	pub last_updated: String,
 	pub state: String,
 	pub owner_id: i64,
 	pub title: String,
-	pub description: String,
+	pub description: Option<String>,
 	pub phase: String,
-	pub starting_balance: Balance,
-	pub cover: String,
+	pub starting_balance: Option<Balance>,
+	pub cover: Option<String>,
 	pub starred: bool,
 	pub display_on_profile: bool,
 	pub totals: Balance,
-	pub last_updated: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GoalThreshold {
-	pub measure: String,
+	pub measure: Measure,
 	pub count: i64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Measure {
+	Word,
+	Time,
+	Page,
+	Chapter,
+	Scene,
+	Line,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -78,12 +121,12 @@ pub struct Goal {
 	pub state: String,
 	pub owner_id: i64,
 	pub title: String,
-	pub description: String,
+	pub description: Option<String>,
 	#[serde(rename = "type")]
 	pub goal_type: String,
 	pub parameters: GoalParameters,
-	pub start_date: String,
-	pub end_date: String,
+	pub start_date: Option<String>,
+	pub end_date: Option<String>,
 	pub work_ids: Vec<i64>,
 	pub tag_ids: Vec<i64>,
 	pub starred: bool,
@@ -101,25 +144,7 @@ pub struct Tag {
 	pub state: String,
 	pub owner_id: i64,
 	pub name: String,
-	pub color: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TallyWork {
-	pub id: i64,
-	pub uuid: String,
-	pub created_at: String,
-	pub updated_at: String,
-	pub state: String,
-	pub owner_id: i64,
-	pub title: String,
-	pub description: String,
-	pub phase: String,
-	pub starting_balance: Balance,
-	pub cover: String,
-	pub starred: bool,
-	pub display_on_profile: bool,
+	pub color: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -132,11 +157,11 @@ pub struct Tally {
 	pub state: String,
 	pub owner_id: i64,
 	pub date: String,
-	pub measure: String,
+	pub measure: Measure,
 	pub count: i64,
-	pub note: String,
+	pub note: Option<String>,
 	pub work_id: i64,
-	pub work: TallyWork,
+	pub work: Project,
 	pub tags: Vec<Tag>,
 }
 
@@ -144,7 +169,7 @@ pub struct Tally {
 #[serde(rename_all = "camelCase")]
 pub struct CreateTallyRequest {
 	pub date: String,
-	pub measure: String,
+	pub measure: Measure,
 	pub count: i64,
 	pub note: String,
 	pub work_id: i64,
@@ -304,11 +329,7 @@ impl TrackbearClient {
 			));
 		}
 
-		response
-			.json::<Vec<Project>>()
-			.await
-			.into_diagnostic()
-			.wrap_err("failed to parse projects response")
+		parse_api_response(response, "projects").await
 	}
 
 	/// List all goals
@@ -339,11 +360,7 @@ impl TrackbearClient {
 			));
 		}
 
-		response
-			.json::<Vec<Goal>>()
-			.await
-			.into_diagnostic()
-			.wrap_err("failed to parse goals response")
+		parse_api_response(response, "goals").await
 	}
 
 	/// List tallies with optional filters
@@ -412,11 +429,7 @@ impl TrackbearClient {
 			));
 		}
 
-		response
-			.json::<Vec<Tally>>()
-			.await
-			.into_diagnostic()
-			.wrap_err("failed to parse tallies response")
+		parse_api_response(response, "tallies").await
 	}
 
 	/// Create a new tally
@@ -448,10 +461,6 @@ impl TrackbearClient {
 			));
 		}
 
-		response
-			.json::<Tally>()
-			.await
-			.into_diagnostic()
-			.wrap_err("failed to parse tally response")
+		parse_api_response(response, "create tally").await
 	}
 }

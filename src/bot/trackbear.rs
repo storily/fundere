@@ -299,7 +299,9 @@ async fn list_projects(
 		for project in &projects {
 			content.push_str(&format!(
 				"• **{}** (ID: {}) - {} words\n",
-				project.title, project.id, project.totals.word
+				project.title,
+				project.id,
+				project.totals.word.unwrap_or_default()
 			));
 
 			components.push(Component::ActionRow(ActionRow {

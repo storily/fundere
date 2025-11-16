@@ -1,9 +1,8 @@
 use chrono::NaiveDate;
 use miette::{miette, Result};
-use tracing::debug;
 
 use super::client::{
-	Balance, CreateTallyRequest, Goal, Project as TbProject, Tally, TrackbearClient,
+	CreateTallyRequest, Goal, Measure, Project as TbProject, Tally, TrackbearClient,
 };
 
 /// A TrackBear project with associated goals and tallies
@@ -38,7 +37,7 @@ impl Project {
 
 	/// Get the current word count (including starting balance)
 	pub fn word_count(&self) -> i64 {
-		self.project.totals.word
+		self.project.totals.word.unwrap_or_default()
 	}
 
 	/// Find the currently active goal for this project
@@ -50,9 +49,13 @@ impl Project {
 			.goals
 			.iter()
 			.filter(|g| {
-				if let (Ok(start), Ok(end)) = (
-					NaiveDate::parse_from_str(&g.start_date, "%Y-%m-%d"),
-					NaiveDate::parse_from_str(&g.end_date, "%Y-%m-%d"),
+				if let (Some(start), Some(end)) = (
+					g.start_date
+						.as_ref()
+						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
+					g.end_date
+						.as_ref()
+						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
 				) {
 					today >= start && today <= end
 				} else {
@@ -74,9 +77,13 @@ impl Project {
 		self.goals
 			.iter()
 			.filter(|g| {
-				if let (Ok(start), Ok(end)) = (
-					NaiveDate::parse_from_str(&g.start_date, "%Y-%m-%d"),
-					NaiveDate::parse_from_str(&g.end_date, "%Y-%m-%d"),
+				if let (Some(start), Some(end)) = (
+					g.start_date
+						.as_ref()
+						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
+					g.end_date
+						.as_ref()
+						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
 				) {
 					today >= start && today <= end
 				} else {
@@ -89,7 +96,7 @@ impl Project {
 	/// Calculate progress for a given goal
 	pub fn goal_progress(&self, goal: &Goal) -> Option<GoalProgress> {
 		// Only calculate for word-based goals
-		if goal.parameters.threshold.measure != "word" {
+		if goal.parameters.threshold.measure != Measure::Word {
 			return None;
 		}
 
@@ -97,9 +104,17 @@ impl Project {
 		let target = goal.parameters.threshold.count;
 
 		// Parse dates
-		let start_date = NaiveDate::parse_from_str(&goal.start_date, "%Y-%m-%d").ok()?;
-		let end_date = NaiveDate::parse_from_str(&goal.end_date, "%Y-%m-%d").ok()?;
 		let today = chrono::Utc::now().date_naive();
+		let (Some(start_date), Some(end_date)) = (
+			goal.start_date
+				.as_ref()
+				.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
+			goal.end_date
+				.as_ref()
+				.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
+		) else {
+			return None;
+		};
 
 		// Calculate total days and days elapsed
 		let total_days = (end_date - start_date).num_days() + 1;
@@ -131,7 +146,7 @@ impl Project {
 		};
 
 		let percent = if target > 0 {
-			(current as f64 / target as f64 * 100.0)
+			current as f64 / target as f64 * 100.0
 		} else {
 			0.0
 		};
@@ -161,7 +176,7 @@ impl Project {
 
 		let request = CreateTallyRequest {
 			date: date.format("%Y-%m-%d").to_string(),
-			measure: "word".to_string(),
+			measure: Measure::Word,
 			count,
 			note: note.unwrap_or_default(),
 			work_id: self.project.id,
