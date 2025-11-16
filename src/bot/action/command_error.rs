@@ -53,6 +53,7 @@ impl CommandError {
 							label: Some("Report to maintainer".to_string()),
 							style: ButtonStyle::Secondary,
 							url: None,
+							sku_id: None,
 						})])
 					} else {
 						vec![]

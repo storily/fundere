@@ -1,10 +1,7 @@
 use miette::Result;
 use twilight_model::{
 	application::interaction::Interaction,
-	channel::message::{
-		component::{Button, ButtonStyle, Component},
-		ReactionType,
-	},
+	channel::message::component::{Button, ButtonStyle, Component},
 };
 use uuid::Uuid;
 
@@ -36,10 +33,11 @@ impl TrackbearLoginConfirm {
 						Component::Button(Button {
 							custom_id: Some(format!("trackbear:login:{member_uuid}")),
 							disabled: false,
-							emoji: Some(ReactionType::Unicode { name: "🔐".into() }),
-							label: Some("I'm sure, let's go".to_string()),
+							emoji: None,
+							label: Some("🔐 I'm sure, let's go".to_string()),
 							style: ButtonStyle::Danger,
 							url: None,
+							sku_id: None,
 						}),
 					]),
 					ephemeral: true,

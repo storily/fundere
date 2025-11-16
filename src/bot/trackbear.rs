@@ -326,6 +326,7 @@ async fn list_projects(
 				label: Some(project.title.clone()),
 				style: button_style,
 				url: None,
+				sku_id: None,
 			}));
 		}
 

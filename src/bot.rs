@@ -6,7 +6,7 @@ use tokio::{
 	task::{spawn, JoinSet},
 };
 use tracing::{debug, error, info, warn};
-use twilight_gateway::{Shard, ShardId};
+use twilight_gateway::{EventTypeFlags, Shard, ShardId, StreamExt};
 use twilight_model::{
 	application::interaction::{Interaction, InteractionData},
 	gateway::event::Event,
@@ -93,11 +93,15 @@ async fn listener(app: App) -> Result<()> {
 	info!("created shard");
 
 	loop {
-		let event = match shard.next_event().await {
-			Ok(event) => event,
-			Err(err) => {
+		let event = match shard.next_event(EventTypeFlags::all()).await {
+			Some(Ok(event)) => event,
+			Some(Err(err)) => {
 				error!(?err, "error receiving event");
 				continue;
+			}
+			None => {
+				info!("shard stream ended");
+				break;
 			}
 		};
 
@@ -115,6 +119,7 @@ async fn listener(app: App) -> Result<()> {
 		});
 	}
 
+	info!("listener exiting");
 	Ok(())
 }
 

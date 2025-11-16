@@ -78,6 +78,7 @@ impl SprintStart {
 						label: Some("Join late".to_string()),
 						style: ButtonStyle::Secondary,
 						url: None,
+						sku_id: None,
 					}),
 					Component::Button(Button {
 						custom_id: Some(format!("sprint:start-words:{id}")),
@@ -86,6 +87,7 @@ impl SprintStart {
 						label: Some("Starting words".to_string()),
 						style: ButtonStyle::Secondary,
 						url: None,
+						sku_id: None,
 					}),
 				]),
 				..Default::default()

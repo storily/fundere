@@ -285,28 +285,16 @@ impl GenericResponseData {
 			followup = followup.flags(MessageFlags::EPHEMERAL);
 		}
 		if let Some(content) = &self.content {
-			followup = followup
-				.content(content)
-				.into_diagnostic()
-				.wrap_err("followup content")?;
+			followup = followup.content(content);
 		}
 		if !self.embeds.is_empty() {
-			followup = followup
-				.embeds(&self.embeds)
-				.into_diagnostic()
-				.wrap_err("followup embed")?;
+			followup = followup.embeds(&self.embeds);
 		}
 		if !self.components.is_empty() {
-			followup = followup
-				.components(&self.components)
-				.into_diagnostic()
-				.wrap_err("followup components")?;
+			followup = followup.components(&self.components);
 		}
 		if !self.attachments.is_empty() {
-			followup = followup
-				.attachments(&self.attachments)
-				.into_diagnostic()
-				.wrap_err("followup attachments")?;
+			followup = followup.attachments(&self.attachments);
 		}
 		Ok(followup)
 	}
@@ -316,28 +304,16 @@ impl GenericResponseData {
 			message = message.flags(MessageFlags::EPHEMERAL);
 		}
 		if let Some(content) = &self.content {
-			message = message
-				.content(content)
-				.into_diagnostic()
-				.wrap_err("message content")?;
+			message = message.content(content);
 		}
 		if !self.embeds.is_empty() {
-			message = message
-				.embeds(&self.embeds)
-				.into_diagnostic()
-				.wrap_err("message embed")?;
+			message = message.embeds(&self.embeds);
 		}
 		if !self.components.is_empty() {
-			message = message
-				.components(&self.components)
-				.into_diagnostic()
-				.wrap_err("message components")?;
+			message = message.components(&self.components);
 		}
 		if !self.attachments.is_empty() {
-			message = message
-				.attachments(&self.attachments)
-				.into_diagnostic()
-				.wrap_err("message attachments")?;
+			message = message.attachments(&self.attachments);
 		}
 		Ok(message)
 	}

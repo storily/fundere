@@ -56,6 +56,7 @@ impl SprintEnd {
 			label: Some("Ending words".to_string()),
 			style: ButtonStyle::Secondary,
 			url: None,
+			sku_id: None,
 		})]);
 
 		app.send_response(GenericResponse::from_sprint(

@@ -128,13 +128,11 @@ async fn ping_maintainer(app: App, interaction: &Interaction, uuid: &str) -> Res
 			.validate()
 			.into_diagnostic()?
 			.build()])
-		.into_diagnostic()?
 		.content(&format!(
 			"Error from {}, occurred at {}",
 			error.member.mention(),
 			error.created_at
 		))
-		.into_diagnostic()?
 		.await
 		.into_diagnostic()?;
 

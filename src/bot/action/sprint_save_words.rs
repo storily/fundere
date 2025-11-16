@@ -68,6 +68,7 @@ impl SprintSaveWords {
 							label: Some("Yes please!".to_string()),
 							style: ButtonStyle::Success,
 							url: None,
+							sku_id: None,
 						}),
 						Component::Button(Button {
 							custom_id: Some(format!("sprint:save-never:{}", login.id)),
@@ -76,6 +77,7 @@ impl SprintSaveWords {
 							label: Some("Don't ask me again".to_string()),
 							style: ButtonStyle::Danger,
 							url: None,
+							sku_id: None,
 						}),
 					]),
 					..Default::default()

@@ -60,6 +60,7 @@ impl SprintStartWarning {
 				label: Some("Join".to_string()),
 				style: ButtonStyle::Secondary,
 				url: None,
+				sku_id: None,
 			}),
 			Component::Button(Button {
 				custom_id: Some(format!("sprint:start-words:{id}")),
@@ -68,6 +69,7 @@ impl SprintStartWarning {
 				label: Some("Starting words".to_string()),
 				style: ButtonStyle::Primary,
 				url: None,
+				sku_id: None,
 			}),
 		]);
 

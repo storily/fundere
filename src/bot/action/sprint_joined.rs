@@ -35,6 +35,7 @@ impl SprintJoined {
 							label: Some("Record starting words".to_string()),
 							style: ButtonStyle::Primary,
 							url: None,
+							sku_id: None,
 						}),
 						Component::Button(Button {
 							custom_id: Some(format!("sprint:leave:{id}")),
@@ -43,6 +44,7 @@ impl SprintJoined {
 							label: Some("Leave".to_string()),
 							style: ButtonStyle::Danger,
 							url: None,
+							sku_id: None,
 						}),
 					]),
 					..Default::default()

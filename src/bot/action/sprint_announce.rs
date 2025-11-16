@@ -40,6 +40,7 @@ impl SprintAnnounce {
 				label: Some("Join".to_string()),
 				style: ButtonStyle::Success,
 				url: None,
+				sku_id: None,
 			}),
 			Component::Button(Button {
 				custom_id: Some(format!("sprint:cancel:{}", sprint.id)),
@@ -48,6 +49,7 @@ impl SprintAnnounce {
 				label: Some("Cancel".to_string()),
 				style: ButtonStyle::Danger,
 				url: None,
+				sku_id: None,
 			}),
 		]);
 
