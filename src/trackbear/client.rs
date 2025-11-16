@@ -74,7 +74,7 @@ pub struct Project {
 	pub uuid: String,
 	pub created_at: String,
 	pub updated_at: String,
-	pub last_updated: String,
+	pub last_updated: Option<String>,
 	pub state: String,
 	pub owner_id: i64,
 	pub title: String,

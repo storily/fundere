@@ -274,8 +274,7 @@ async fn list_projects(
 	// Sort by last updated (most recent first)
 	projects.sort_by(|a, b| b.last_updated.cmp(&a.last_updated));
 
-	// Take only the first 10
-	projects.truncate(10);
+	projects.truncate(5);
 
 	if projects.is_empty() {
 		app.send_response(GenericResponse::from_interaction(
@@ -293,34 +292,34 @@ async fn list_projects(
 			ActionRow, Button, ButtonStyle, Component,
 		};
 
-		let mut content = String::from("**Your TrackBear Projects:**\n\n");
+		let mut content = String::with_capacity(50 + projects.len() * 50);
 		let mut components = Vec::new();
 
 		for project in &projects {
 			content.push_str(&format!(
-				"• **{}** (ID: {}) - {} words\n",
-				project.title,
-				project.id,
-				project.totals.word.unwrap_or_default()
+				"- `{id}` {title} ({words} words)\n",
+				id = project.id,
+				title = project.title,
+				words = project.totals.word.unwrap_or_default()
 			));
 
-			components.push(Component::ActionRow(ActionRow {
-				components: vec![Component::Button(Button {
-					custom_id: Some(format!("trackbear:set-project:{}", project.id)),
-					disabled: false,
-					emoji: None,
-					label: Some(format!("Set \"{}\" as current", project.title)),
-					style: ButtonStyle::Primary,
-					url: None,
-				})],
+			components.push(Component::Button(Button {
+				custom_id: Some(format!("trackbear:set-project:{}", project.id)),
+				disabled: false,
+				emoji: None,
+				label: Some(project.title.clone()),
+				style: ButtonStyle::Primary,
+				url: None,
 			}));
 		}
+
+		content.push_str("\nChoose a project to make current: _(green is already selected)_\n");
 
 		app.send_response(GenericResponse::from_interaction(
 			interaction,
 			GenericResponseData {
 				content: Some(content),
-				components,
+				components: vec![Component::ActionRow(ActionRow { components })],
 				ephemeral: true,
 				..Default::default()
 			},
