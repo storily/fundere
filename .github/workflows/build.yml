@@ -24,7 +24,7 @@ jobs:
           rustup default stable
 
       - name: Configure caching
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index/
@@ -46,7 +46,7 @@ jobs:
         run: cargo build --target aarch64-unknown-linux-musl --release
 
       - name: Upload output
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v5
         with:
           retention-days: 7
           path: "target/aarch64-unknown-linux-musl/release/fundere"
