@@ -53,7 +53,7 @@ impl Project {
 			.goals
 			.iter()
 			.filter(|g| {
-				if let (Some(start), Some(end)) = (
+				match (
 					g.start_date
 						.as_ref()
 						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
@@ -61,9 +61,10 @@ impl Project {
 						.as_ref()
 						.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
 				) {
-					today >= start && today <= end
-				} else {
-					false
+					(Some(start), Some(end)) => today >= start && today <= end,
+					(Some(start), None) => today >= start,
+					(None, Some(end)) => today <= end,
+					(None, None) => false, // probably invalid
 				}
 			})
 			.collect();
@@ -88,7 +89,8 @@ impl Project {
 		let today = chrono::Utc::now().date_naive();
 		let (Some(start_date), Some(end_date)) = (
 			goal.start_date
-				.as_ref()
+				.as_deref()
+				.or_else(|| self.project.created_at.split_once('T').map(|(d, _)| d))
 				.and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok()),
 			goal.end_date
 				.as_ref()
