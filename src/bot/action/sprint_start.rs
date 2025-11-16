@@ -1,15 +1,15 @@
-use std::time::Duration;
 use itertools::Itertools;
 use miette::{miette, Result};
+use std::time::Duration;
 use tracing::debug;
 use twilight_mention::Mention;
-use twilight_model::channel::message::component::{ButtonStyle, Button, Component};
+use twilight_model::channel::message::component::{Button, ButtonStyle, Component};
 use uuid::Uuid;
 
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData, Timer},
-		utils::{time::ChronoDateTimeExt, action_row},
+		utils::{action_row, time::ChronoDateTimeExt},
 	},
 	db::sprint::{Sprint, SprintStatus},
 };
@@ -22,7 +22,7 @@ pub struct SprintStart(Uuid);
 impl SprintStart {
 	#[tracing::instrument(name = "SprintStart")]
 	pub fn new(sprint: &Sprint) -> Action {
-		ActionClass::SprintStart(Self(sprint.id)).into()
+		ActionClass::SprintStart(Box::new(Self(sprint.id))).into()
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
@@ -57,8 +57,11 @@ impl SprintStart {
 				.await?;
 
 			debug!("set up sprint end warning timer");
-			app.send_timer(Timer::new_after(ending_in.saturating_sub(Duration::from_secs(30)), SprintEndWarning::new(&sprint))?)
-				.await?;
+			app.send_timer(Timer::new_after(
+				ending_in.saturating_sub(Duration::from_secs(30)),
+				SprintEndWarning::new(&sprint),
+			)?)
+			.await?;
 		} else {
 			return Err(miette!("sprint ended before it began???"));
 		}

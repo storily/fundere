@@ -1,9 +1,7 @@
 use miette::{miette, IntoDiagnostic, Result};
 use twilight_model::{
-	channel::message::component::{TextInputStyle, Component, TextInput},
-	application::{
-		interaction::Interaction,
-	},
+	application::interaction::Interaction,
+	channel::message::component::{Component, TextInput, TextInputStyle},
 	http::interaction::{InteractionResponse, InteractionResponseType},
 	id::{marker::InteractionMarker, Id},
 };
@@ -28,12 +26,12 @@ pub struct SprintWordsStart {
 impl SprintWordsStart {
 	#[tracing::instrument(name = "SprintWordsStart", skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: Uuid, member: Member) -> Action {
-		ActionClass::SprintWordsStart(Self {
+		ActionClass::SprintWordsStart(Box::new(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			sprint,
 			member,
-		})
+		}))
 		.into()
 	}
 

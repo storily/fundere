@@ -14,7 +14,7 @@ pub struct SprintUpdate {
 impl SprintUpdate {
 	#[tracing::instrument(name = "SprintUpdate")]
 	pub fn new(sprint: &Sprint) -> Action {
-		ActionClass::SprintUpdate(Self { sprint: sprint.id }).into()
+		ActionClass::SprintUpdate(Box::new(Self { sprint: sprint.id })).into()
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {

@@ -2,10 +2,9 @@ use std::iter::repeat;
 
 use miette::{GraphicalReportHandler, GraphicalTheme, IntoDiagnostic, Report, Result};
 use twilight_model::{
-	channel::message::component::{ButtonStyle, Button, Component},
-	application::{
-	interaction::Interaction,
-}};
+	application::interaction::Interaction,
+	channel::message::component::{Button, ButtonStyle, Component},
+};
 use twilight_util::builder::embed::EmbedBuilder;
 
 use crate::{
@@ -36,7 +35,7 @@ impl CommandError {
 		let err = Error::create(app.clone(), member, &error).await?;
 
 		Ok(
-			ActionClass::CommandError(Self(GenericResponse::from_interaction(
+			ActionClass::CommandError(Box::new(Self(GenericResponse::from_interaction(
 				interaction,
 				GenericResponseData {
 					ephemeral: true,
@@ -60,7 +59,7 @@ impl CommandError {
 					},
 					..Default::default()
 				},
-			)))
+			))))
 			.into(),
 		)
 	}

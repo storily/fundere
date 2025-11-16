@@ -18,7 +18,7 @@ impl CalcResult {
 		public: bool,
 	) -> Result<Action> {
 		Ok(
-			ActionClass::CalcResult(Self(GenericResponse::from_interaction(
+			ActionClass::CalcResult(Box::new(Self(GenericResponse::from_interaction(
 				interaction,
 				GenericResponseData {
 					ephemeral: !public,
@@ -38,7 +38,7 @@ impl CalcResult {
 					],
 					..Default::default()
 				},
-			)))
+			))))
 			.into(),
 		)
 	}

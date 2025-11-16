@@ -27,7 +27,7 @@ impl TrackbearLoginConfirm {
 	#[tracing::instrument(name = "TrackbearLoginConfirm", skip(interaction))]
 	pub fn new(interaction: &Interaction, member: Member) -> Action {
 		let member_uuid = Uuid::from(member);
-		ActionClass::TrackbearLoginConfirm(Self {
+		ActionClass::TrackbearLoginConfirm(Box::new(Self {
 			response: Box::new(GenericResponse::from_interaction(
 				interaction,
 				GenericResponseData {
@@ -46,7 +46,7 @@ impl TrackbearLoginConfirm {
 					..Default::default()
 				},
 			)),
-		})
+		}))
 		.into()
 	}
 

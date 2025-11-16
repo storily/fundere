@@ -2,7 +2,7 @@ use itertools::Itertools;
 use miette::{miette, Result};
 use tracing::debug;
 use twilight_mention::Mention;
-use twilight_model::channel::message::component::{ButtonStyle, Button, Component};
+use twilight_model::channel::message::component::{Button, ButtonStyle, Component};
 use uuid::Uuid;
 
 use crate::{
@@ -21,7 +21,7 @@ pub struct SprintEnd(Uuid);
 impl SprintEnd {
 	#[tracing::instrument(name = "SprintEnd")]
 	pub fn new(sprint: &Sprint) -> Action {
-		ActionClass::SprintEnd(Self(sprint.id)).into()
+		ActionClass::SprintEnd(Box::new(Self(sprint.id))).into()
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {

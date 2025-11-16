@@ -30,7 +30,7 @@ macro_rules! action {
 
 		#[derive(Debug, Clone)]
 		pub enum ActionClass {
-			$($typename($typename)),*
+			$($typename(Box<$typename>)),*
 		}
 
 		impl From<ActionClass> for Action {

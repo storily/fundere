@@ -140,13 +140,16 @@ async fn set_project(
 		.ok();
 
 	let member = Member::try_from(interaction)?;
-	let client = TrackbearLogin::client_for_member(app.clone(), member).await?;
+	let client = TrackbearLogin::client_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("no login info"))?;
 
 	debug!(?slug, ?member, "checking project exists / is accessible");
-	let nano_project: ItemResponse<ProjectObject> = client
-		.get_slug(NanoKind::Project, slug)
-		.await
-		.into_diagnostic()?;
+	let nano_project: ItemResponse<ProjectObject> = todo!();
+	// client
+	// 	.get_slug(NanoKind::Project, slug)
+	// 	.await
+	// 	.into_diagnostic()?;
 
 	debug!(?nano_project, ?member, "saving project");
 	let project = Project::create_or_replace(app.clone(), member, nano_project.data.id()).await?;
@@ -259,7 +262,7 @@ pub async fn save_words(
 	words: SaveWords,
 ) -> Result<()> {
 	let client = login.client().await?;
-	let nano_project = NanoProject::fetch_with_client(client.clone(), project.nano_id).await?;
+	let nano_project = NanoProject::fetch_with_client(todo!("{client:?}"), project.nano_id).await?;
 	let Some(goal) = nano_project.current_goal() else {
 		return Err(miette!("no goal set up on the nano site"));
 	};
@@ -270,12 +273,13 @@ pub async fn save_words(
 	};
 
 	debug!(?project.id, ?nano_project, ?session_word_count, "posting new wordcount session to nano");
-	let saved_session = client
-		.add_project_session(nano_project.id, goal.id, session_word_count)
-		.await
-		.into_diagnostic()
-		.wrap_err("nano: failed to update wordcount")?;
-	debug!(?project.id, ?nano_project, ?session_word_count, ?saved_session, "created wordcount session on nano");
+	// TODO
+	// let saved_session = client
+	// 	.add_project_session(nano_project.id, goal.id, session_word_count)
+	// 	.await
+	// 	.into_diagnostic()
+	// 	.wrap_err("nano: failed to update wordcount")?;
+	// debug!(?project.id, ?nano_project, ?session_word_count, ?saved_session, "created wordcount session on nano");
 
 	app.send_response(GenericResponse::from_interaction(
 		interaction,

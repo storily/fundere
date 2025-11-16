@@ -1,9 +1,9 @@
 use miette::{IntoDiagnostic, Result};
 use twilight_model::{
 	application::interaction::Interaction,
-	http::interaction::{InteractionResponse, InteractionResponseType, InteractionResponseData},
-	id::{marker::InteractionMarker, Id},
 	channel::message::MessageFlags,
+	http::interaction::{InteractionResponse, InteractionResponseData, InteractionResponseType},
+	id::{marker::InteractionMarker, Id},
 };
 
 use super::{Action, ActionClass, Args};
@@ -17,21 +17,21 @@ pub struct CommandAck {
 impl CommandAck {
 	#[tracing::instrument(name = "CommandAck", skip(interaction))]
 	pub fn new(interaction: &Interaction) -> Action {
-		ActionClass::CommandAck(Self {
+		ActionClass::CommandAck(Box::new(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			ephemeral: false,
-		})
+		}))
 		.into()
 	}
 
 	#[tracing::instrument(name = "CommandAck:ephemeral", skip(interaction))]
 	pub fn ephemeral(interaction: &Interaction) -> Action {
-		ActionClass::CommandAck(Self {
+		ActionClass::CommandAck(Box::new(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			ephemeral: true,
-		})
+		}))
 		.into()
 	}
 

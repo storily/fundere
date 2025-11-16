@@ -22,11 +22,11 @@ pub struct TrackbearLoginModal {
 impl TrackbearLoginModal {
 	#[tracing::instrument(name = "TrackbearLoginModal", skip(interaction))]
 	pub fn new(interaction: &Interaction, member: Member) -> Action {
-		ActionClass::TrackbearLoginModal(Self {
+		ActionClass::TrackbearLoginModal(Box::new(Self {
 			id: interaction.id,
 			token: interaction.token.clone(),
 			member,
-		})
+		}))
 		.into()
 	}
 

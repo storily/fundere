@@ -2,7 +2,10 @@ use miette::Result;
 use twilight_model::application::interaction::Interaction;
 
 use crate::{
-	bot::{context::{GenericResponse, GenericResponseData}, utils::time::ChronoDateTimeExt},
+	bot::{
+		context::{GenericResponse, GenericResponseData},
+		utils::time::ChronoDateTimeExt,
+	},
 	db::sprint::Sprint,
 };
 
@@ -15,14 +18,17 @@ impl SprintLeft {
 	#[tracing::instrument(name = "SprintLeft", skip(interaction))]
 	pub fn new(interaction: &Interaction, sprint: &Sprint) -> Result<Action> {
 		let Sprint { shortid, .. } = sprint;
-		Ok(ActionClass::SprintLeft(Self(GenericResponse::from_interaction(
-			interaction,
-			GenericResponseData {
-				ephemeral: true,
-				content: Some(format!("You've left sprint `{shortid}`.")),
-				..Default::default()
-			},
-		).with_age(sprint.created_at.elapsed()?)))
+		Ok(ActionClass::SprintLeft(Box::new(Self(
+			GenericResponse::from_interaction(
+				interaction,
+				GenericResponseData {
+					ephemeral: true,
+					content: Some(format!("You've left sprint `{shortid}`.")),
+					..Default::default()
+				},
+			)
+			.with_age(sprint.created_at.elapsed()?),
+		)))
 		.into())
 	}
 

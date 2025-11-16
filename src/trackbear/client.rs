@@ -16,7 +16,7 @@ fn user_agent() -> String {
 	)
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TrackbearClient {
 	client: Client,
 	api_key: SecretValue,

@@ -40,7 +40,8 @@ impl SprintSaveWords {
 		}
 
 		let client = login.client().await?;
-		let nano_proj = NanoProject::fetch_with_client(client, project.nano_id).await?;
+		let nano_proj =
+			NanoProject::fetch_with_client(todo!("{client:?}"), project.nano_id).await?;
 		let title = nano_proj.title();
 
 		let participant = sprint.participant(app.clone(), member).await?;
@@ -53,7 +54,7 @@ impl SprintSaveWords {
 		}
 
 		Ok(Some(
-			ActionClass::SprintSaveWords(Self(GenericResponse::from_interaction(
+			ActionClass::SprintSaveWords(Box::new(Self(GenericResponse::from_interaction(
 				interaction,
 				GenericResponseData {
 					ephemeral: true,
@@ -81,7 +82,7 @@ impl SprintSaveWords {
 					]),
 					..Default::default()
 				},
-			)))
+			))))
 			.into(),
 		))
 	}

@@ -5,7 +5,8 @@ use twilight_model::application::interaction::Interaction;
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData},
-		App, utils::time::ChronoDateTimeExt,
+		utils::time::ChronoDateTimeExt,
+		App,
 	},
 	db::sprint::{Sprint, SprintStatus},
 };
@@ -22,16 +23,17 @@ impl SprintSummary {
 
 		let summary = sprint.summary_text(app).await?;
 
-		Ok(
-			ActionClass::SprintSummary(Self(GenericResponse::from_interaction(
+		Ok(ActionClass::SprintSummary(Box::new(Self(
+			GenericResponse::from_interaction(
 				interaction,
 				GenericResponseData {
 					content: Some(summary),
 					..Default::default()
 				},
-			).with_age(sprint.created_at.elapsed()?)))
-			.into(),
-		)
+			)
+			.with_age(sprint.created_at.elapsed()?),
+		)))
+		.into())
 	}
 
 	#[tracing::instrument(name = "SprintSummary::new_from_db", skip(app))]
@@ -42,13 +44,13 @@ impl SprintSummary {
 		debug!("got summary, let's post it");
 
 		Ok(
-			ActionClass::SprintSummary(Self(GenericResponse::from_sprint(
+			ActionClass::SprintSummary(Box::new(Self(GenericResponse::from_sprint(
 				&sprint,
 				GenericResponseData {
 					content: Some(summary),
 					..Default::default()
 				},
-			)))
+			))))
 			.into(),
 		)
 	}
@@ -62,9 +64,7 @@ impl SprintSummary {
 async fn update_status(sprint: &Sprint, app: App) -> Result<()> {
 	if sprint.status == SprintStatus::Ended {
 		debug!("sprint ended, marking it as summaried");
-		sprint
-			.update_status(app, SprintStatus::Summaried)
-			.await?;
+		sprint.update_status(app, SprintStatus::Summaried).await?;
 	} else if sprint.status < SprintStatus::Ended {
 		debug!("sprint not ended, summary will probably be partial");
 	} else {

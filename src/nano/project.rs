@@ -27,7 +27,7 @@ impl Project {
 		let client = TrackbearLogin::client_for_member(app.clone(), member)
 			.await?
 			.ok_or_else(|| miette!("No TrackBear login found. Use /trackbear login first."))?;
-		Self::fetch_with_client(client, id).await
+		Self::fetch_with_client(todo!("{client:?}"), id).await
 	}
 
 	pub async fn fetch_with_client(client: NanoClient, id: u64) -> Result<Self> {

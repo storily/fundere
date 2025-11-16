@@ -2,17 +2,16 @@ use chrono::Duration;
 use miette::{miette, Context, Result};
 use tracing::debug;
 use twilight_model::{
-	channel::message::component::{ButtonStyle, Button, Component},
-	application::{
-	interaction::Interaction,
-}};
+	application::interaction::Interaction,
+	channel::message::component::{Button, ButtonStyle, Component},
+};
 
 use crate::{
 	bot::{
 		context::{GenericResponse, GenericResponseData, Timer},
 		utils::{
 			action_row,
-			time::{ChronoDurationExt, ChronoDateTimeExt},
+			time::{ChronoDateTimeExt, ChronoDurationExt},
 		},
 		App,
 	},
@@ -84,25 +83,25 @@ impl SprintAnnounce {
 
 	#[tracing::instrument(name = "SprintAnnounce", skip(app, interaction))]
 	pub async fn new(app: App, interaction: &Interaction, sprint: Sprint) -> Result<Action> {
-		Ok(ActionClass::SprintAnnounce(Self {
-			response: Box::new(GenericResponse::from_interaction(
-				interaction,
-				Self::prepare(app, &sprint).await?,
-			).with_age(sprint.created_at.elapsed()?)),
+		Ok(ActionClass::SprintAnnounce(Box::new(Self {
+			response: Box::new(
+				GenericResponse::from_interaction(interaction, Self::prepare(app, &sprint).await?)
+					.with_age(sprint.created_at.elapsed()?),
+			),
 			sprint: Box::new(sprint),
-		})
+		}))
 		.into())
 	}
 
 	#[tracing::instrument(name = "SprintAnnounce::new_from_db", skip(app))]
 	pub async fn new_from_db(app: App, sprint: Sprint) -> Result<Action> {
-		Ok(ActionClass::SprintAnnounce(Self {
+		Ok(ActionClass::SprintAnnounce(Box::new(Self {
 			response: Box::new(GenericResponse::from_sprint(
 				&sprint,
 				Self::prepare(app, &sprint).await?,
 			)),
 			sprint: Box::new(sprint),
-		})
+		}))
 		.into())
 	}
 

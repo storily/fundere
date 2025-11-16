@@ -2,7 +2,7 @@ use chrono::Duration;
 use itertools::Itertools;
 use miette::{miette, Result};
 use twilight_mention::Mention;
-use twilight_model::channel::message::component::{ButtonStyle, Button, Component};
+use twilight_model::channel::message::component::{Button, ButtonStyle, Component};
 use uuid::Uuid;
 
 use crate::{
@@ -21,7 +21,7 @@ pub struct SprintStartWarning(Uuid);
 impl SprintStartWarning {
 	#[tracing::instrument(name = "SprintStartWarning")]
 	pub fn new(sprint: &Sprint) -> Action {
-		ActionClass::SprintStartWarning(Self(sprint.id)).into()
+		ActionClass::SprintStartWarning(Box::new(Self(sprint.id))).into()
 	}
 
 	pub async fn handle(self, Args { app, .. }: Args) -> Result<()> {
