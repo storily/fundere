@@ -209,19 +209,16 @@ async fn login(
 	};
 
 	debug!(?login.id, "checking trackbear credentials");
-	let client = login
+	let _ = login
 		.client()
 		.await
 		.wrap_err("couldn't login to trackbear!")?;
 	debug!(?login.id, "successfully logged into trackbear");
 
-	// TODO: Get username from TrackBear API
-	let name = "TrackBear User";
-
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
-			content: Some(format!("✔ You're logged in to TrackBear as {name}!\nYou can now show the wordcount of your projects and update your wordcount with this bot.")),
+			content: Some(format!("✔ You're logged in to TrackBear!\nYou can now show the wordcount of your projects and update your wordcount with this bot.")),
 			ephemeral: true,
 			..Default::default()
 		},

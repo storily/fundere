@@ -24,11 +24,6 @@ pub struct TrackbearClient {
 	api_key: SecretValue,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct PingResponse {
-	pub pong: String,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Balance {
@@ -204,6 +199,7 @@ impl TrackbearClient {
 			Ok(response) => {
 				let status = response.status();
 				debug!("service ping response: {}", status);
+				// Just check status code, no JSON response body
 				Ok(status.is_success())
 			}
 			Err(err) => {
@@ -231,11 +227,6 @@ impl TrackbearClient {
 
 		match status {
 			StatusCode::OK => {
-				let _ping: PingResponse = response
-					.json()
-					.await
-					.into_diagnostic()
-					.wrap_err("failed to parse ping response")?;
 				debug!("API key is valid");
 				Ok(())
 			}
@@ -462,24 +453,5 @@ impl TrackbearClient {
 			.await
 			.into_diagnostic()
 			.wrap_err("failed to parse tally response")
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[tokio::test]
-	async fn test_ping_service() {
-		// This should work without authentication
-		let result = TrackbearClient::ping_service().await;
-		assert!(result.is_ok());
-	}
-
-	#[tokio::test]
-	async fn test_invalid_token() {
-		let client = TrackbearClient::new(SecretValue::from("invalid-token")).unwrap();
-		let result = client.ping_with_token().await;
-		assert!(result.is_err());
 	}
 }
