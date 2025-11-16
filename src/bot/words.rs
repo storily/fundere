@@ -36,16 +36,6 @@ pub fn command() -> Result<Command> {
 				.option(IntegerBuilder::new("id", "The TrackBear project ID").required(true)),
 		)
 		.option(
-			SubCommandBuilder::new(
-				"goal",
-				"Override your project's goal (useful in November). 0 unsets the custom goal.",
-			)
-			.option(
-				IntegerBuilder::new("words", "New goal in words, only applies to sassbot")
-					.required(true),
-			),
-		)
-		.option(
 			SubCommandBuilder::new("record", "Set your word count").option(
 				StringBuilder::new(
 					"words",
@@ -79,9 +69,6 @@ pub async fn on_command(
 		Some(("project", opts)) => set_project(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: project")?,
-		Some(("goal", opts)) => override_goal(app.clone(), interaction, opts)
-			.await
-			.wrap_err("command: goal")?,
 		Some(("record", opts)) => record_words(app.clone(), interaction, opts)
 			.await
 			.wrap_err("command: record")?,
@@ -173,47 +160,6 @@ async fn set_project(
 	show_followup(app, interaction, &project).await
 }
 
-async fn override_goal(
-	app: App,
-	interaction: &Interaction,
-	options: &[CommandDataOption],
-) -> Result<()> {
-	let goal = get_integer(options, "words").ok_or_else(|| miette!("missing goal in words"))?;
-
-	let member = Member::try_from(interaction)?;
-	app.do_action(CommandAck::ephemeral(interaction))
-		.await
-		.log()
-		.ok();
-
-	let project = Project::get_for_member(app.clone(), member)
-		.await?
-		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
-
-	debug!(?project.id, ?goal, "updating project");
-	let content = if goal > 0 {
-		project.set_goal(app.clone(), goal as _).await?;
-		debug!(?project.id, ?goal, "set custom goal");
-		format!("Got it! Your new sassbot-only goal is **{goal}**.",)
-	} else {
-		project.unset_goal(app.clone()).await?;
-		debug!(?project.id, "unset custom goal");
-		"Your goal has been reverted to the one from TrackBear (if any).".to_string()
-	};
-
-	app.send_response(GenericResponse::from_interaction(
-		interaction,
-		GenericResponseData {
-			content: Some(content),
-			ephemeral: true,
-			..Default::default()
-		},
-	))
-	.await?;
-
-	show_followup(app, interaction, &project).await
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SaveWords {
 	Absolute(u64),
@@ -268,7 +214,6 @@ pub async fn save_words(
 
 	debug!(?project.id, ?words, "posting new wordcount to TrackBear");
 
-	// Create a tally with set_total=true to set the absolute word count
 	let tally = trackbear_project
 		.add_tally(
 			&client,

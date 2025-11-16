@@ -13,7 +13,7 @@ pub(crate) mod trackbear;
 
 fn main() -> Result<()> {
 	Builder::new_multi_thread()
-		.thread_stack_size(3 * 1024 * 1024)
+		.thread_stack_size(5 * 1024 * 1024)
 		.enable_all()
 		.build()
 		.unwrap()

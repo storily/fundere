@@ -25,7 +25,6 @@ pub struct Project {
 	pub updated_at: DateTime<Utc>,
 	pub member: Member,
 	pub trackbear_id: i64,
-	pub goal: Option<u64>,
 }
 
 impl Project {
@@ -36,10 +35,6 @@ impl Project {
 			updated_at: row.try_get("updated_at").into_diagnostic()?,
 			member: row.try_get("member").into_diagnostic()?,
 			trackbear_id: row.try_get::<_, i64>("trackbear_id").into_diagnostic()?,
-			goal: row
-				.try_get::<_, Option<i32>>("goal")
-				.into_diagnostic()?
-				.map(|n| n as _),
 		})
 	}
 
@@ -110,32 +105,6 @@ impl Project {
 			.wrap_err("db: get project for member")
 	}
 
-	#[tracing::instrument(skip(app))]
-	pub async fn set_goal(&self, app: App, goal: u32) -> Result<()> {
-		app.db
-			.query(
-				"UPDATE projects SET goal = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-				&[&self.id, &i32::try_from(goal).into_diagnostic()?],
-			)
-			.await
-			.into_diagnostic()
-			.wrap_err("db: set project goal")
-			.map(drop)
-	}
-
-	#[tracing::instrument(skip(app))]
-	pub async fn unset_goal(&self, app: App) -> Result<()> {
-		app.db
-			.query(
-				"UPDATE projects SET goal = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-				&[&self.id],
-			)
-			.await
-			.into_diagnostic()
-			.wrap_err("db: unset project goal")
-			.map(drop)
-	}
-
 	pub async fn fetch(&self, app: App) -> Result<TrackbearProject> {
 		let login = TrackbearLogin::get_for_member(app.clone(), self.member)
 			.await?
@@ -157,19 +126,11 @@ impl Project {
 
 		if let Some(goal) = proj.current_goal() {
 			if let Some(prog) = proj.goal_progress(goal) {
-				let display_count = if let Some(override_goal) = self.goal {
-					// Adjust progress with custom goal override
-					let adjusted_percent = count as f64 / override_goal as f64 * 100.0;
-					(decorated, words) = Effect::decorate(count as u64, adjusted_percent >= 100.0);
-					adjusted_percent
-				} else {
-					(decorated, words) = Effect::decorate(count as u64, prog.percent >= 100.0);
-					prog.percent
-				};
+				(decorated, words) = Effect::decorate(count as u64, prog.percent >= 100.0);
 
-				write!(deets, "{:.2}% done", display_count).ok();
+				write!(deets, "{:.2}% done", prog.percent).ok();
 
-				if display_count < 100.0 {
+				if prog.percent < 100.0 {
 					write!(deets, ", {}", prog.format_tracking()).ok();
 					if prog.words_per_day_to_finish != prog.daily_target {
 						write!(
@@ -182,10 +143,7 @@ impl Project {
 				}
 			}
 
-			// Show custom goal if set
-			if let Some(custom) = self.goal {
-				write!(deets, ", {} custom goal", format_count(custom as i64)).ok();
-			} else if goal.parameters.threshold.count != 50_000 {
+			if goal.parameters.threshold.count != 50_000 {
 				write!(
 					deets,
 					", {} goal",
