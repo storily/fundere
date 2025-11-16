@@ -264,11 +264,9 @@ async fn list_projects(
 		.log()
 		.ok();
 
-	let login = TrackbearLogin::get_for_member(app.clone(), member)
+	let client = TrackbearLogin::client_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("You need to /trackbear login first!"))?;
-
-	let client = login.client().await?;
 	let mut projects = client.list_projects().await?;
 
 	// Get the current project for this member
@@ -355,11 +353,9 @@ async fn set_project(app: App, interaction: &Interaction, project_id_str: &str) 
 		.log()
 		.ok();
 
-	let login = TrackbearLogin::get_for_member(app.clone(), member)
+	let client = TrackbearLogin::client_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("You need to /trackbear login first!"))?;
-
-	let client = login.client().await?;
 
 	// Verify the project exists and user has access
 	let projects = client.list_projects().await?;

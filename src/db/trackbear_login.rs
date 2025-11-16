@@ -142,4 +142,26 @@ impl TrackbearLogin {
 		client.validate().await?;
 		Ok(client)
 	}
+
+	/// Get a validated TrackBear client for a member, returning None if:
+	/// - The member has no login row
+	/// - The API key is empty (migrated from old system but not logged in yet)
+	/// - The API key is invalid
+	#[tracing::instrument(skip(app))]
+	pub async fn client_for_member(app: App, member: Member) -> Result<Option<TrackbearClient>> {
+		let Some(login) = Self::get_for_member(app, member).await? else {
+			return Ok(None);
+		};
+
+		// Check if API key is empty (from migration)
+		if login.api_key.as_sensitive_str().is_empty() {
+			return Ok(None);
+		}
+
+		// Try to get a client, but return None if it fails (e.g., invalid key)
+		match login.client().await {
+			Ok(client) => Ok(Some(client)),
+			Err(_) => Ok(None),
+		}
+	}
 }

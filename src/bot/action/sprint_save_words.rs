@@ -11,6 +11,7 @@ use crate::{
 		App,
 	},
 	db::{member::Member, project::Project, sprint::Sprint, trackbear_login::TrackbearLogin},
+	trackbear::Project as TrackbearProject,
 };
 
 use super::{Action, ActionClass, Args};
@@ -38,8 +39,13 @@ impl SprintSaveWords {
 			return Ok(None);
 		}
 
+		// Try to get a client - returns None if no API key, empty key, or invalid key
+		let Some(client) = TrackbearLogin::client_for_member(app.clone(), member).await? else {
+			return Ok(None);
+		};
+
 		// Fetch project title from TrackBear API
-		let trackbear_project = project.fetch(app.clone()).await?;
+		let trackbear_project = TrackbearProject::fetch(&client, project.trackbear_id).await?;
 		let title = trackbear_project.title();
 
 		let participant = sprint.participant(app.clone(), member).await?;

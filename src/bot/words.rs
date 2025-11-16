@@ -116,11 +116,9 @@ async fn set_project(
 		.ok();
 
 	let member = Member::try_from(interaction)?;
-	let login = TrackbearLogin::get_for_member(app.clone(), member)
+	let client = TrackbearLogin::client_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("You need to /trackbear login first!"))?;
-
-	let client = login.client().await?;
 
 	debug!(
 		?project_id,
@@ -195,28 +193,27 @@ async fn record_words(
 	let project = Project::get_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("no project set up! Use /words project"))?;
-	let login = TrackbearLogin::get_for_member(app.clone(), member)
+	let client = TrackbearLogin::client_for_member(app.clone(), member)
 		.await?
 		.ok_or_else(|| miette!("You need to /trackbear login to be able to record words!"))?;
 
-	save_words(app, interaction, &login, &project, words).await
+	save_words(app, interaction, &client, &project, words).await
 }
 
 pub async fn save_words(
 	app: App,
 	interaction: &Interaction,
-	login: &TrackbearLogin,
+	client: &crate::trackbear::TrackbearClient,
 	project: &Project,
 	words: SaveWords,
 ) -> Result<()> {
-	let client = login.client().await?;
-	let trackbear_project = project.fetch(app.clone()).await?;
+	let trackbear_project = crate::trackbear::Project::fetch(client, project.trackbear_id).await?;
 
 	debug!(?project.id, ?words, "posting new wordcount to TrackBear");
 
 	let tally = trackbear_project
 		.add_tally(
-			&client,
+			client,
 			match words {
 				SaveWords::Absolute(n) => n as i64,
 				SaveWords::Relative(n) => n,

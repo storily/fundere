@@ -580,11 +580,11 @@ async fn save_words(
 		.and_then(|opt| opt.ok_or_else(|| miette!("no project for {:?}", member)))
 		.wrap_err("project not found")?;
 
-	let login = TrackbearLogin::get_for_member(app.clone(), member)
-		.await
-		.and_then(|opt| opt.ok_or_else(|| miette!("no trackbear login for {:?}", member)))?;
+	let client = TrackbearLogin::client_for_member(app.clone(), member)
+		.await?
+		.ok_or_else(|| miette!("no trackbear login for {:?}", member))?;
 
-	save_words_action(app, interaction, &login, &project, words).await
+	save_words_action(app, interaction, &client, &project, words).await
 }
 
 async fn save_never(app: App, interaction: &Interaction, login_id: &str) -> Result<()> {
