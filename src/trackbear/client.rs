@@ -87,7 +87,7 @@ pub struct Project {
 	pub cover: Option<String>,
 	pub starred: bool,
 	pub display_on_profile: bool,
-	pub totals: Balance,
+	pub totals: Option<Balance>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

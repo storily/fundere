@@ -49,7 +49,7 @@ pub fn command() -> Result<Command> {
 			SubCommandBuilder::new("record", "Set your word count").option(
 				StringBuilder::new(
 					"words",
-					"New total word count, or relative using ++/-- prefixes",
+					"New total word count, or relative using +/- prefixes",
 				)
 				.required(true),
 			),

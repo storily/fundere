@@ -305,7 +305,11 @@ async fn list_projects(
 				"- `{id}` {title} ({words} words)\n",
 				id = project.id,
 				title = project.title,
-				words = project.totals.word.unwrap_or_default()
+				words = project
+					.totals
+					.as_ref()
+					.and_then(|t| t.word)
+					.unwrap_or_default()
 			));
 
 			let is_current = current_project_id == Some(project.id);

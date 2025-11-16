@@ -37,7 +37,11 @@ impl Project {
 
 	/// Get the current word count (including starting balance)
 	pub fn word_count(&self) -> i64 {
-		self.project.totals.word.unwrap_or_default()
+		self.project
+			.totals
+			.as_ref()
+			.and_then(|t| t.word)
+			.unwrap_or_default()
 	}
 
 	/// Find the currently active goal for this project
