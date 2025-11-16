@@ -63,7 +63,9 @@ impl TryFrom<&Interaction> for Channel {
 			.guild_id
 			.ok_or(miette!("interaction is not from a guild"))?;
 		let channel = interaction
-			.channel_id
+			.channel
+			.as_ref()
+			.and_then(|c| Some(c.id))
 			.ok_or(miette!("interaction is not from a guild"))?;
 		Ok(Self {
 			guild_id: Some(guild_id.get() as _),

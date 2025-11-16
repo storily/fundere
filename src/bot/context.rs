@@ -232,7 +232,7 @@ pub struct GenericResponse {
 impl GenericResponse {
 	pub fn from_interaction(interaction: &Interaction, data: GenericResponseData) -> Self {
 		Self {
-			channel: interaction.channel_id,
+			channel: interaction.channel.as_ref().map(|c| c.id),
 			interaction: Some(interaction.id),
 			token: Some(interaction.token.clone()),
 			message: None,

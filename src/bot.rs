@@ -1,4 +1,4 @@
-use futures_util::{FutureExt, StreamExt};
+use futures_util::FutureExt;
 use miette::{Context, IntoDiagnostic, Report, Result};
 use tokio::{
 	signal,
@@ -6,7 +6,7 @@ use tokio::{
 	task::{spawn, JoinSet},
 };
 use tracing::{debug, error, info, warn};
-use twilight_gateway::Shard;
+use twilight_gateway::{Shard, ShardId};
 use twilight_model::{
 	application::interaction::{Interaction, InteractionData},
 	gateway::event::Event,
@@ -84,15 +84,23 @@ pub async fn start(config: Config) -> Result<()> {
 
 #[tracing::instrument(skip_all)]
 async fn listener(app: App) -> Result<()> {
-	let (shard, mut events) = Shard::new(
+	let mut shard = Shard::new(
+		ShardId::ONE,
 		app.config.discord.token.clone(),
 		app.config.discord.intents.to_intent(),
 	);
 
-	shard.start().await.into_diagnostic()?;
 	info!("created shard");
 
-	while let Some(event) = events.next().await {
+	loop {
+		let event = match shard.next_event().await {
+			Ok(event) => event,
+			Err(err) => {
+				error!(?err, "error receiving event");
+				continue;
+			}
+		};
+
 		debug!(?event, "spawning off to handle event");
 
 		let app = app.clone();
