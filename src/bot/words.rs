@@ -266,23 +266,21 @@ pub async fn save_words(
 	let client = login.client().await?;
 	let trackbear_project = project.fetch(app.clone()).await?;
 
-	let count = match words {
-		SaveWords::Absolute(n) => n as i64,
-		SaveWords::Relative(n) => {
-			let current = trackbear_project.word_count();
-			(current + n).max(0)
-		}
-	};
-
-	debug!(?project.id, ?count, "posting new wordcount to TrackBear");
+	debug!(?project.id, ?words, "posting new wordcount to TrackBear");
 
 	// Create a tally with set_total=true to set the absolute word count
 	let tally = trackbear_project
 		.add_tally(
 			&client,
-			count,
-			true,
-			Some(format!("Updated via fundere bot")),
+			match words {
+				SaveWords::Absolute(n) => n as i64,
+				SaveWords::Relative(n) => n,
+			},
+			match words {
+				SaveWords::Absolute(_) => true,
+				SaveWords::Relative(_) => false,
+			},
+			Some(format!("Updated via sassbot")),
 		)
 		.await?;
 
