@@ -39,10 +39,8 @@ impl SprintSaveWords {
 			return Ok(None);
 		}
 
-		let client = login.client().await?;
-		let nano_proj =
-			NanoProject::fetch_with_client(todo!("{client:?}"), project.nano_id).await?;
-		let title = nano_proj.title();
+		// TODO: Fetch project title from TrackBear API
+		let title = "your project";
 
 		let participant = sprint.participant(app.clone(), member).await?;
 		let Some(diff) = participant.words_written() else {

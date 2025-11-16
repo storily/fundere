@@ -11,7 +11,8 @@ use crate::{
 		utils::pretties::{palindrome_after, Effect},
 		App,
 	},
-	nano::project::Project as NanoProject,
+	db::trackbear_login::TrackbearLogin,
+	trackbear::Project as TrackbearProject,
 };
 
 use super::member::Member;
@@ -22,7 +23,7 @@ pub struct Project {
 	pub created_at: DateTime<Utc>,
 	pub updated_at: DateTime<Utc>,
 	pub member: Member,
-	pub nano_id: u64,
+	pub trackbear_id: i64,
 	pub goal: Option<u64>,
 }
 
@@ -33,7 +34,7 @@ impl Project {
 			created_at: row.try_get("created_at").into_diagnostic()?,
 			updated_at: row.try_get("updated_at").into_diagnostic()?,
 			member: row.try_get("member").into_diagnostic()?,
-			nano_id: row.try_get::<_, i64>("nano_id").into_diagnostic()? as _,
+			trackbear_id: row.try_get::<_, i64>("trackbear_id").into_diagnostic()?,
 			goal: row
 				.try_get::<_, Option<i32>>("goal")
 				.into_diagnostic()?
@@ -42,16 +43,16 @@ impl Project {
 	}
 
 	#[tracing::instrument(skip(app))]
-	async fn create(app: App, member: Member, id: u64) -> Result<Self> {
+	pub async fn create(app: App, member: Member, id: i64) -> Result<Self> {
 		app.db
 			.query_one(
 				"
-				INSERT INTO projects (member, nano_id)
+				INSERT INTO projects (member, trackbear_id)
 				VALUES ($1, $2)
-				ON CONFLICT (member) DO UPDATE SET nano_id = EXCLUDED.nano_id
+				ON CONFLICT (member) DO UPDATE SET trackbear_id = EXCLUDED.trackbear_id
 				RETURNING *
 				",
-				&[&member, &(id as i64)],
+				&[&member, &id],
 			)
 			.await
 			.into_diagnostic()
@@ -60,7 +61,7 @@ impl Project {
 	}
 
 	#[tracing::instrument(skip(app))]
-	pub async fn create_or_replace(app: App, member: Member, id: u64) -> Result<Self> {
+	pub async fn create_or_replace(app: App, member: Member, id: i64) -> Result<Self> {
 		if let Some(project) = Self::get_for_member(app.clone(), member).await? {
 			debug!(?project.id, "deleting project before replace");
 			app.db
@@ -134,83 +135,94 @@ impl Project {
 			.map(drop)
 	}
 
-	pub async fn fetch(&self, app: App) -> Result<NanoProject> {
-		NanoProject::fetch(app.clone(), self.member, self.nano_id).await
+	pub async fn fetch(&self, app: App) -> Result<TrackbearProject> {
+		let login = TrackbearLogin::get_for_member(app.clone(), self.member)
+			.await?
+			.ok_or_else(|| {
+				miette::miette!("No TrackBear login found. Use /trackbear login first.")
+			})?;
+
+		let client = login.client().await?;
+		TrackbearProject::fetch(&client, self.trackbear_id).await
 	}
 
 	pub async fn show_text(&self, app: App) -> Result<String> {
 		let proj = self.fetch(app.clone()).await?;
 		let title = proj.title();
-		let count = proj.wordcount();
+		let count = proj.word_count();
 
-		let (mut decorated, mut words) = Effect::decorate(count, false);
+		let (mut decorated, mut words) = Effect::decorate(count as u64, false);
 		let mut deets = String::new();
 
-		if let Some(mut goal) = proj.current_goal().cloned() {
-			if let Some(over) = self.goal {
-				goal.set(over);
-			}
+		if let Some(goal) = proj.current_goal() {
+			if let Some(prog) = proj.goal_progress(goal) {
+				let display_count = if let Some(override_goal) = self.goal {
+					// Adjust progress with custom goal override
+					let adjusted_percent = count as f64 / override_goal as f64 * 100.0;
+					(decorated, words) = Effect::decorate(count as u64, adjusted_percent >= 100.0);
+					adjusted_percent
+				} else {
+					(decorated, words) = Effect::decorate(count as u64, prog.percent >= 100.0);
+					prog.percent
+				};
 
-			if let Some(prog) = goal.progress() {
-				(decorated, words) = Effect::decorate(count, prog.percent >= 100.0);
+				write!(deets, "{:.2}% done", display_count).ok();
 
-				write!(deets, "{:.2}% done", prog.percent).ok();
-				if prog.percent < 100.0 {
-					if prog.today.diff == 0 {
-						write!(deets, ", on track").ok();
-						if prog.live.diff != 0 {
-							write!(deets, " / {live} live", live = tracking(prog.live.diff)).ok();
-						}
-					} else {
+				if display_count < 100.0 {
+					write!(deets, ", {}", prog.format_tracking()).ok();
+					if prog.words_per_day_to_finish != prog.daily_target {
 						write!(
 							deets,
-							", {today} today / {live} live",
-							today = tracking(prog.today.diff),
-							live = tracking(prog.live.diff)
+							" ({} needed/day)",
+							format_count(prog.words_per_day_to_finish)
 						)
 						.ok();
 					}
 				}
 			}
 
-			if let Some(streak) = goal.data.streak {
-				write!(deets, ", {streak} day streak").ok();
-			}
-
-			if !(goal.is_november() && goal.data.goal == 50_000) {
-				write!(deets, ", {} goal", numberk(goal.data.goal as _)).ok();
+			// Show custom goal if set
+			if let Some(custom) = self.goal {
+				write!(deets, ", {} custom goal", format_count(custom as i64)).ok();
+			} else if goal.parameters.threshold.count != 50_000 {
+				write!(
+					deets,
+					", {} goal",
+					format_count(goal.parameters.threshold.count)
+				)
+				.ok();
 			}
 		} else {
 			write!(deets, "no goal").ok();
 		}
 
 		if !decorated {
-			let next_pretty = Effect::on_after(count);
-			let next_palindrome = palindrome_after(count);
+			let next_pretty = Effect::on_after(count as u64);
+			let next_palindrome = palindrome_after(count as u64);
 
 			if next_pretty == next_palindrome {
 				write!(
 					deets,
 					", {} to next pal",
-					next_palindrome.saturating_sub(count)
+					next_palindrome.saturating_sub(count as u64)
 				)
 				.ok();
 			} else {
 				write!(
 					deets,
 					", {}/{} to next pretty/pal",
-					next_pretty.saturating_sub(count),
-					next_palindrome.saturating_sub(count)
+					next_pretty.saturating_sub(count as u64),
+					next_palindrome.saturating_sub(count as u64)
 				)
 				.ok();
 			}
 		}
 
-		Ok(format!("“{title}”: **{words}** words ({deets})"))
+		Ok(format!("\"{title}\": **{words}** words ({deets})"))
 	}
 }
 
-fn numberk(n: i64) -> String {
+fn format_count(n: i64) -> String {
 	if n < 1000 {
 		n.to_string()
 	} else if n < 10_000 {
@@ -232,5 +244,5 @@ fn tracking(mut diff: i64) -> String {
 		"ahead"
 	};
 
-	format!("{} {state}", numberk(diff))
+	format!("{} {state}", format_count(diff))
 }

@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use miette::{miette, Context, IntoDiagnostic, Result};
-use nanowrimo::{ItemResponse, NanoKind, ObjectInfo, ProjectObject};
 use tracing::{debug, error, warn};
 use twilight_model::application::{
 	command::{Command, CommandType},
@@ -23,21 +22,18 @@ use crate::{
 	},
 	db::{member::Member, project::Project, trackbear_login::TrackbearLogin},
 	error_ext::ErrorExt,
-	nano::project::Project as NanoProject,
 };
 
 #[tracing::instrument]
 pub fn command() -> Result<Command> {
-	CommandBuilder::new("words", "Nanowrimo control", CommandType::ChatInput)
+	CommandBuilder::new("words", "TrackBear word tracking", CommandType::ChatInput)
 		.option(SubCommandBuilder::new(
 			"show",
 			"Show off your word count and any pretties",
 		))
 		.option(
-			SubCommandBuilder::new("project", "Configure which project you're working on").option(
-				StringBuilder::new("url", "The URL of the project in the nanowrimo site")
-					.required(true),
-			),
+			SubCommandBuilder::new("project", "Configure which project you're working on")
+				.option(IntegerBuilder::new("id", "The TrackBear project ID").required(true)),
 		)
 		.option(
 			SubCommandBuilder::new(
@@ -125,42 +121,48 @@ async fn set_project(
 	interaction: &Interaction,
 	options: &[CommandDataOption],
 ) -> Result<()> {
-	let input = get_string(options, "url").ok_or_else(|| miette!("missing url"))?;
-	let slug = if input.starts_with("https:") {
-		input
-			.split('/')
-			.last()
-			.ok_or_else(|| miette!("malformed url"))?
-	} else {
-		input
-	};
+	let project_id = get_integer(options, "id").ok_or_else(|| miette!("missing project id"))?;
+
 	app.do_action(CommandAck::ephemeral(interaction))
 		.await
 		.log()
 		.ok();
 
 	let member = Member::try_from(interaction)?;
-	let client = TrackbearLogin::client_for_member(app.clone(), member)
+	let login = TrackbearLogin::get_for_member(app.clone(), member)
 		.await?
-		.ok_or_else(|| miette!("no login info"))?;
+		.ok_or_else(|| miette!("You need to /trackbear login first!"))?;
 
-	debug!(?slug, ?member, "checking project exists / is accessible");
-	let nano_project: ItemResponse<ProjectObject> = todo!();
-	// client
-	// 	.get_slug(NanoKind::Project, slug)
-	// 	.await
-	// 	.into_diagnostic()?;
+	let client = login.client().await?;
 
-	debug!(?nano_project, ?member, "saving project");
-	let project = Project::create_or_replace(app.clone(), member, nano_project.data.id()).await?;
-	debug!(?nano_project, ?project.id, ?member, "saved project");
+	debug!(
+		?project_id,
+		?member,
+		"checking project exists / is accessible"
+	);
+
+	// Verify the project exists and user has access
+	let projects = client.list_projects().await?;
+	let trackbear_project = projects
+		.into_iter()
+		.find(|p| p.id == project_id)
+		.ok_or_else(|| {
+			miette!(
+				"Project with ID {} not found in your TrackBear account",
+				project_id
+			)
+		})?;
+
+	debug!(?trackbear_project, ?member, "saving project");
+	let project = Project::create_or_replace(app.clone(), member, project_id).await?;
+	debug!(?project.id, ?member, "saved project");
 
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
 			content: Some(format!(
 				"Got it! To show off your wordcount for {}, call **/words show**",
-				nano_project.data.attributes.title
+				trackbear_project.title
 			)),
 			ephemeral: true,
 			..Default::default()
@@ -262,29 +264,34 @@ pub async fn save_words(
 	words: SaveWords,
 ) -> Result<()> {
 	let client = login.client().await?;
-	let nano_project = NanoProject::fetch_with_client(todo!("{client:?}"), project.nano_id).await?;
-	let Some(goal) = nano_project.current_goal() else {
-		return Err(miette!("no goal set up on the nano site"));
+	let trackbear_project = project.fetch(app.clone()).await?;
+
+	let count = match words {
+		SaveWords::Absolute(n) => n as i64,
+		SaveWords::Relative(n) => {
+			let current = trackbear_project.word_count();
+			(current + n).max(0)
+		}
 	};
 
-	let session_word_count = match words {
-		SaveWords::Absolute(n) => n.saturating_sub(nano_project.wordcount()) as i64,
-		SaveWords::Relative(n) => n,
-	};
+	debug!(?project.id, ?count, "posting new wordcount to TrackBear");
 
-	debug!(?project.id, ?nano_project, ?session_word_count, "posting new wordcount session to nano");
-	// TODO
-	// let saved_session = client
-	// 	.add_project_session(nano_project.id, goal.id, session_word_count)
-	// 	.await
-	// 	.into_diagnostic()
-	// 	.wrap_err("nano: failed to update wordcount")?;
-	// debug!(?project.id, ?nano_project, ?session_word_count, ?saved_session, "created wordcount session on nano");
+	// Create a tally with set_total=true to set the absolute word count
+	let tally = trackbear_project
+		.add_tally(
+			&client,
+			count,
+			true,
+			Some(format!("Updated via fundere bot")),
+		)
+		.await?;
+
+	debug!(?project.id, ?tally.id, "created tally on TrackBear");
 
 	app.send_response(GenericResponse::from_interaction(
 		interaction,
 		GenericResponseData {
-			content: Some("Updated your word count on nanowrimo.org".to_string()),
+			content: Some("Updated your word count on TrackBear!".to_string()),
 			ephemeral: true,
 			..Default::default()
 		},
