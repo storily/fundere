@@ -41,7 +41,7 @@ tracing-subscriber = "0.3.16"
 twilight-cache-inmemory = { version = "0.16", features = ["permission-calculator"] }
 twilight-gateway = { version = "0.16" }
 twilight-http = { version = "0.16", features = ["hickory"] }
-twilight-mention = "0.16"
+twilight-mention = "0.17"
 twilight-model = "0.16"
 twilight-standby = "0.16"
 twilight-util = { version = "0.16", features = ["permission-calculator", "builder", "link"] }
