@@ -6,3 +6,4 @@ pub mod migrate;
 pub mod project;
 pub mod sprint;
 pub mod trackbear_login;
+pub mod user_preference;

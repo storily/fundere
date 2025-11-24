@@ -41,6 +41,7 @@ use crate::{
 		project::Project,
 		sprint::{Sprint, SprintStatus},
 		trackbear_login::TrackbearLogin,
+		user_preference::UserPreference,
 	},
 	error_ext::ErrorExt,
 };
@@ -280,9 +281,10 @@ async fn sprint_new(
 	let member = Member::try_from(interaction)?;
 	app.do_action(CommandAck::new(interaction)).await.log().ok();
 
-	// TrackBear doesn't provide timezone info, so we use UTC for sprint scheduling
-	// TODO: Consider storing user timezone preferences in the database
-	let now = Utc::now().with_timezone(&chrono_tz::UTC);
+	// Get user's timezone preference, defaulting to Pacific/Auckland
+	let prefs = UserPreference::get_or_create(app.clone(), member).await?;
+	let user_tz = prefs.timezone_tz()?;
+	let now = Utc::now().with_timezone(&user_tz);
 
 	let when = parse_when_relative_to(now.time(), get_string(options, "when").unwrap_or("15m"))?;
 

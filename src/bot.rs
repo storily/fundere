@@ -26,6 +26,7 @@ pub mod names;
 pub mod random;
 pub mod related;
 pub mod sprint;
+pub mod timezone;
 pub mod trackbear;
 pub mod utils;
 pub mod words;
@@ -51,6 +52,7 @@ pub async fn start(config: Config) -> Result<()> {
 				choose::command()?,
 				debug::command()?,
 				names::command()?,
+				timezone::command()?,
 				trackbear::command()?,
 				random::command()?,
 				related::command()?,
@@ -185,6 +187,9 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 					"names" => names::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: names"),
+					"timezone" => timezone::on_command(app.clone(), interaction, data)
+						.await
+						.wrap_err("command: timezone"),
 					"trackbear" => trackbear::on_command(app.clone(), interaction, data)
 						.await
 						.wrap_err("command: trackbear"),
@@ -223,6 +228,11 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 							.await
 							.wrap_err("component: debug")
 					}
+					Some(&"timezone") => {
+						timezone::on_component(app.clone(), interaction, &subids[1..], data)
+							.await
+							.wrap_err("component: timezone")
+					}
 					Some(&"trackbear") => {
 						trackbear::on_component(app.clone(), interaction, &subids[1..], data)
 							.await
@@ -246,6 +256,11 @@ async fn handle_interaction(app: App, interaction: &Interaction) -> Result<()> {
 						sprint::on_modal(app.clone(), interaction, &subids[1..], data)
 							.await
 							.wrap_err("modal: sprint")
+					}
+					Some(&"timezone") => {
+						timezone::on_modal(app.clone(), interaction, &subids[1..], data)
+							.await
+							.wrap_err("modal: timezone")
 					}
 					Some(&"trackbear") => {
 						trackbear::on_modal(app.clone(), interaction, &subids[1..], data)

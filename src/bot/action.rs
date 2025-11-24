@@ -48,6 +48,8 @@ action!(
 	command_error: CommandError,
 	trackbear_login_confirm: TrackbearLoginConfirm,
 	trackbear_login_modal: TrackbearLoginModal,
+	timezone_modal: TimezoneModal,
+	timezone_show: TimezoneShow,
 	sprint_announce: SprintAnnounce,
 	sprint_cancelled: SprintCancelled,
 	sprint_end: SprintEnd,
