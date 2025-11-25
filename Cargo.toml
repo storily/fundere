@@ -43,7 +43,7 @@ twilight-gateway = { version = "0.16" }
 twilight-http = { version = "0.16", features = ["hickory"] }
 twilight-mention = "0.16"
 twilight-model = "0.16"
-twilight-standby = "0.16"
+twilight-standby = "0.17"
 twilight-util = { version = "0.16", features = ["permission-calculator", "builder", "link"] }
 url = "2.4.0"
 uuid = { version = "1.2.1", features = ["v4"] }
